@@ -1,0 +1,34 @@
+# Ambiente e secrets — NUNCA commitar
+.env
+.env.local
+.env.production
+serviceAccountKey.json
+firebase_config/serviceAccountKey.json
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+*.log
+*.sqlite
+*.db
+instance/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# IAs e Documentação Interna
+AGENTS.md
+GUIA_FIREBASE.md
+GUIA_RAILWAY.md
+everything-claude-code/

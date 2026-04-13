@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('login_title') }}{% endblock %}
+
+{% block content %}
+<section class="section section--auth">
+    <div class="container">
+        <div class="auth-card">
+            <!-- Logo -->
+            <div class="auth-logo">
+                <svg width="48" height="32" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <text x="8" y="26" font-family="Outfit, sans-serif" font-size="28" font-weight="700" fill="var(--color-text)">J</text>
+                    <line x1="2" y1="16" x2="46" y2="16" stroke="#C9A84C" stroke-width="1.5"/>
+                </svg>
+            </div>
+
+            <h1 class="auth-title">{{ t('login_heading') }}</h1>
+
+            <!-- Formulário de login -->
+            <form class="auth-form" id="login-form">
+                <div class="form-group">
+                    <label for="email" class="form-label">{{ t('login_email') }}</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-input" 
+                        placeholder="{{ t('login_email_placeholder') }}"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">{{ t('login_password') }}</label>
+                    <div class="password-input-wrapper">
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            class="form-input" 
+                            placeholder="{{ t('login_password_placeholder') }}"
+                            required
+                            autocomplete="current-password"
+                        >
+                        <button type="button" class="password-toggle" id="password-toggle" aria-label="{{ t('login_password') }}">
+                            <svg class="icon-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            <svg class="icon-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mensagem de erro -->
+                <div class="form-error" id="form-error" style="display: none;"></div>
+
+                <button type="submit" class="btn btn-primary btn--full" id="submit-btn">
+                    {{ t('login_submit') }}
+                </button>
+            </form>
+
+            <!-- Link esqueceu senha -->
+            <div class="auth-links">
+                <a href="#" class="auth-link" id="forgot-password-link">{{ t('login_forgot') }}</a>
+            </div>
+
+            <!-- Divisor -->
+            <div class="auth-divider">
+                <span>{{ t('login_or') }}</span>
+            </div>
+
+            <!-- Google Sign-in (em breve) -->
+            <button class="btn btn-google" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                {{ t('login_google') }}
+                <span class="badge-soon">{{ t('login_soon') }}</span>
+            </button>
+
+            <!-- Link para cadastro -->
+            <div class="auth-footer">
+                <p>{{ t('login_no_account') }} <a href="/cadastro" class="auth-link">{{ t('login_register') }}</a></p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block head %}
+<style>
+    /* Seção de autenticação — Premium */
+    .section--auth {
+        padding: var(--space-16) 0;
+        background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-surface-offset) 100%);
+        min-height: calc(100vh - 200px);
+        display: flex;
+        align-items: center;
+    }
+
+    /* Card de autenticação — Glass */
+    .auth-card {
+        max-width: 420px;
+        margin: 0 auto;
+        background: var(--color-surface);
+        border-radius: var(--radius-2xl);
+        border: 1px solid var(--color-border);
+        padding: var(--space-10);
+        box-shadow: var(--shadow-xl);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Gold accent line on top */
+    .auth-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+    }
+
+    [data-theme="dark"] .auth-card {
+        background: rgba(12, 21, 34, 0.9);
+        border-color: rgba(212, 184, 92, 0.1);
+        backdrop-filter: blur(12px);
+    }
+
+    .auth-logo {
+        text-align: center;
+        margin-bottom: var(--space-5);
+    }
+
+    .auth-title {
+        font-family: var(--font-display);
+        font-size: var(--text-2xl);
+        font-weight: 600;
+        color: var(--color-text);
+        text-align: center;
+        margin-bottom: var(--space-8);
+        letter-spacing: -0.02em;
+    }
+
+    /* Formulário */
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-5);
+    }
+
+    /* Input de senha com toggle */
+    .password-input-wrapper {
+        position: relative;
+    }
+
+    .password-input-wrapper .form-input {
+        padding-right: var(--space-10);
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: var(--space-3);
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--color-text-faint);
+        cursor: pointer;
+        padding: var(--space-1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color var(--transition-fast);
+    }
+
+    .password-toggle:hover {
+        color: var(--color-gold);
+    }
+
+    /* Botões */
+    .btn--full {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn-google {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-3);
+        padding: var(--space-3) var(--space-4);
+        border: 1.5px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-2);
+        color: var(--color-text);
+        font-family: var(--font-display);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .badge-soon {
+        font-size: 10px;
+        padding: 2px 8px;
+        background: var(--color-gold-highlight);
+        border-radius: var(--radius-full);
+        color: var(--color-gold-active);
+        font-weight: 600;
+    }
+
+    /* Links */
+    .auth-links {
+        text-align: center;
+        margin-top: var(--space-4);
+    }
+
+    .auth-link {
+        color: var(--color-gold);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        text-decoration: none;
+        transition: color var(--transition-fast);
+    }
+
+    .auth-link:hover {
+        color: var(--color-gold-hover);
+    }
+
+    [data-theme="dark"] .auth-link {
+        color: var(--color-gold);
+    }
+
+    /* Divisor */
+    .auth-divider {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+        margin: var(--space-6) 0;
+        color: var(--color-text-faint);
+        font-size: var(--text-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+
+    .auth-divider::before,
+    .auth-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--color-divider);
+    }
+
+    /* Footer */
+    .auth-footer {
+        text-align: center;
+        margin-top: var(--space-8);
+        padding-top: var(--space-6);
+        border-top: 1px solid var(--color-divider);
+        font-size: var(--text-sm);
+        color: var(--color-text-muted);
+    }
+
+    /* Toast */
+    .toast-container {
+        position: fixed;
+        bottom: var(--space-6);
+        right: var(--space-6);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    /* Responsivo */
+    @media (max-width: 480px) {
+        .auth-card {
+            padding: var(--space-6);
+            margin: 0 var(--space-4);
+            border-radius: var(--radius-xl);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+    // Importa funções do Firebase Auth
+    import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+    // Elementos do DOM
+    const loginForm = document.getElementById('login-form');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const passwordToggle = document.getElementById('password-toggle');
+    const formError = document.getElementById('form-error');
+    const submitBtn = document.getElementById('submit-btn');
+    const forgotPasswordLink = document.getElementById('forgot-password-link');
+
+    // Toggle de visibilidade da senha
+    passwordToggle.addEventListener('click', function() {
+        const iconEye = this.querySelector('.icon-eye');
+        const iconEyeOff = this.querySelector('.icon-eye-off');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            iconEye.style.display = 'none';
+            iconEyeOff.style.display = 'block';
+        } else {
+            passwordInput.type = 'password';
+            iconEye.style.display = 'block';
+            iconEyeOff.style.display = 'none';
+        }
+    });
+
+    // Mostra mensagem de erro
+    function showError(message) {
+        formError.textContent = message;
+        formError.style.display = 'block';
+    }
+
+    // Esconde mensagem de erro
+    function hideError() {
+        formError.textContent = '';
+        formError.style.display = 'none';
+    }
+
+    // Mostra toast
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 4000);
+    }
+
+    // Tradução de erros do Firebase
+    function translateError(code) {
+        const errors = {
+            'auth/wrong-password': 'Senha incorreta.',
+            'auth/user-not-found': 'E-mail não encontrado.',
+            'auth/invalid-email': 'E-mail inválido.',
+            'auth/too-many-requests': 'Muitas tentativas. Tente novamente em alguns minutos.',
+            'auth/user-disabled': 'Esta conta foi desativada.',
+            'auth/invalid-credential': 'E-mail ou senha incorretos.'
+        };
+        return errors[code] || 'Erro ao fazer login. Tente novamente.';
+    }
+
+    // Login
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        hideError();
+        
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Entrando...';
+        
+        try {
+            // Aguarda o Firebase estar inicializado
+            let attempts = 0;
+            while (!window.firebaseAuth && attempts < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+            
+            if (!window.firebaseAuth) {
+                throw new Error('Firebase não inicializado');
+            }
+            
+            // Faz login no Firebase
+            const userCredential = await signInWithEmailAndPassword(window.firebaseAuth, email, password);
+            const idToken = await userCredential.user.getIdToken();
+            
+            // Envia o token para o servidor
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id_token: idToken })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Redireciona para a página solicitada ou para a home
+                const urlParams = new URLSearchParams(window.location.search);
+                const nextUrl = urlParams.get('next') || data.redirect || '/';
+                window.location.href = nextUrl;
+            } else {
+                showError(data.error || 'Erro ao fazer login');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Entrar';
+            }
+        } catch (error) {
+            console.error('Erro no login:', error);
+            showError(translateError(error.code));
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Entrar';
+        }
+    });
+
+    // Esqueceu a senha
+    forgotPasswordLink.addEventListener('click', async function(e) {
+        e.preventDefault();
+        
+        const email = emailInput.value.trim();
+        
+        if (!email) {
+            showError('Digite seu e-mail primeiro.');
+            emailInput.focus();
+            return;
+        }
+        
+        try {
+            // Aguarda o Firebase estar inicializado
+            let attempts = 0;
+            while (!window.firebaseAuth && attempts < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+            
+            if (!window.firebaseAuth) {
+                throw new Error('Firebase não inicializado');
+            }
+            
+            await sendPasswordResetEmail(window.firebaseAuth, email);
+            showToast('E-mail de recuperação enviado!', 'success');
+        } catch (error) {
+            console.error('Erro ao enviar e-mail de recuperação:', error);
+            showToast('Erro ao enviar e-mail. Verifique o endereço.', 'error');
+        }
+    });
+</script>
+{% endblock %}

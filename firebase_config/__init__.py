@@ -1,0 +1,1 @@
+# Pacote firebase_config

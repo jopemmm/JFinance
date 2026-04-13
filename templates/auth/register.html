@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('register_title') }}{% endblock %}
+
+{% block content %}
+<section class="section section--auth">
+    <div class="container">
+        <div class="auth-card">
+            <!-- Logo -->
+            <div class="auth-logo">
+                <svg width="48" height="32" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <text x="8" y="26" font-family="Cormorant Garamond, Georgia, serif" font-size="28" font-weight="700" fill="#1B3A5C">J</text>
+                    <line x1="2" y1="16" x2="46" y2="16" stroke="#C9A84C" stroke-width="1.5"/>
+                </svg>
+            </div>
+
+            <h1 class="auth-title">{{ t('register_heading') }}</h1>
+
+            <!-- Formulário de cadastro -->
+            <form class="auth-form" id="register-form">
+                <div class="form-group">
+                    <label for="name" class="form-label">{{ t('register_name') }}</label>
+                    <input 
+                        type="text" 
+                        id="name" 
+                        name="name" 
+                        class="form-input" 
+                        placeholder="{{ t('register_name_placeholder') }}"
+                        required
+                        autocomplete="name"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="email" class="form-label">{{ t('register_email') }}</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-input" 
+                        placeholder="{{ t('register_email_placeholder') }}"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">{{ t('register_password') }}</label>
+                    <div class="password-input-wrapper">
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            class="form-input" 
+                            placeholder="{{ t('register_password_placeholder') }}"
+                            required
+                            minlength="8"
+                            autocomplete="new-password"
+                        >
+                        <button type="button" class="password-toggle" id="password-toggle" aria-label="{{ t('register_password') }}">
+                            <svg class="icon-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            <svg class="icon-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <span class="form-hint">Mínimo 8 caracteres</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password" class="form-label">Confirmar senha</label>
+                    <div class="password-input-wrapper">
+                        <input 
+                            type="password" 
+                            id="confirm-password" 
+                            name="confirm_password" 
+                            class="form-input" 
+                            placeholder="Repita sua senha"
+                            required
+                            autocomplete="new-password"
+                        >
+                        <button type="button" class="password-toggle" id="confirm-password-toggle" aria-label="Mostrar senha">
+                            <svg class="icon-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            <svg class="icon-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mensagem de erro -->
+                <div class="form-error" id="form-error" style="display: none;"></div>
+
+                <button type="submit" class="btn btn-primary btn--full" id="submit-btn">
+                    {{ t('register_submit') }}
+                </button>
+            </form>
+
+            <!-- Link para login -->
+            <div class="auth-footer">
+                <p>{{ t('register_has_account') }} <a href="/login" class="auth-link">{{ t('register_login') }}</a></p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block head %}
+<style>
+    /* Seção de autenticação */
+    .section--auth {
+        padding: var(--space-16) 0;
+        background: var(--color-bg);
+        min-height: calc(100vh - 200px);
+        display: flex;
+        align-items: center;
+    }
+
+    /* Card de autenticação */
+    .auth-card {
+        max-width: 400px;
+        margin: 0 auto;
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border);
+        padding: var(--space-8);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .auth-logo {
+        text-align: center;
+        margin-bottom: var(--space-4);
+    }
+
+    .auth-title {
+        font-family: var(--font-display);
+        font-size: var(--text-2xl);
+        color: var(--color-text);
+        text-align: center;
+        margin-bottom: var(--space-6);
+    }
+
+    /* Formulário */
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
+    .form-label {
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--color-text-muted);
+    }
+
+    .form-input {
+        padding: var(--space-3) var(--space-4);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        background: var(--color-surface-2);
+        color: var(--color-text);
+        font-size: var(--text-base);
+        transition: border-color var(--transition);
+    }
+
+    .form-input:focus {
+        border-color: var(--color-primary);
+        outline: none;
+    }
+
+    .form-hint {
+        font-size: var(--text-xs);
+        color: var(--color-text-faint);
+    }
+
+    /* Input de senha com toggle */
+    .password-input-wrapper {
+        position: relative;
+    }
+
+    .password-input-wrapper .form-input {
+        padding-right: var(--space-10);
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: var(--space-3);
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        padding: var(--space-1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .password-toggle:hover {
+        color: var(--color-text);
+    }
+
+    /* Mensagem de erro */
+    .form-error {
+        padding: var(--space-3);
+        background: var(--color-error-bg);
+        border-radius: var(--radius-md);
+        color: var(--color-error);
+        font-size: var(--text-sm);
+    }
+
+    /* Botões */
+    .btn--full {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Links */
+    .auth-link {
+        color: var(--color-primary);
+        font-size: var(--text-sm);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    .auth-link:hover {
+        color: var(--color-primary-hover);
+    }
+
+    /* Footer */
+    .auth-footer {
+        text-align: center;
+        margin-top: var(--space-6);
+        padding-top: var(--space-6);
+        border-top: 1px solid var(--color-divider);
+        font-size: var(--text-sm);
+        color: var(--color-text-muted);
+    }
+
+    /* Toast */
+    .toast-container {
+        position: fixed;
+        bottom: var(--space-6);
+        right: var(--space-6);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .toast {
+        padding: var(--space-3) var(--space-5);
+        border-radius: var(--radius-md);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        box-shadow: var(--shadow-lg);
+        animation: slideUp 0.3s ease forwards;
+    }
+
+    .toast-success {
+        background: var(--color-success);
+        color: white;
+    }
+
+    .toast-error {
+        background: var(--color-error);
+        color: white;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    /* Responsivo */
+    @media (max-width: 480px) {
+        .auth-card {
+            padding: var(--space-5);
+            margin: 0 var(--space-4);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+    // Importa funções do Firebase Auth
+    import { createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+    // Elementos do DOM
+    const registerForm = document.getElementById('register-form');
+    const nameInput = document.getElementById('name');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm-password');
+    const passwordToggle = document.getElementById('password-toggle');
+    const confirmPasswordToggle = document.getElementById('confirm-password-toggle');
+    const formError = document.getElementById('form-error');
+    const submitBtn = document.getElementById('submit-btn');
+
+    // Toggle de visibilidade da senha
+    function setupPasswordToggle(toggleBtn, input) {
+        toggleBtn.addEventListener('click', function() {
+            const iconEye = this.querySelector('.icon-eye');
+            const iconEyeOff = this.querySelector('.icon-eye-off');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                iconEye.style.display = 'none';
+                iconEyeOff.style.display = 'block';
+            } else {
+                input.type = 'password';
+                iconEye.style.display = 'block';
+                iconEyeOff.style.display = 'none';
+            }
+        });
+    }
+
+    setupPasswordToggle(passwordToggle, passwordInput);
+    setupPasswordToggle(confirmPasswordToggle, confirmPasswordInput);
+
+    // Mostra mensagem de erro
+    function showError(message) {
+        formError.textContent = message;
+        formError.style.display = 'block';
+    }
+
+    // Esconde mensagem de erro
+    function hideError() {
+        formError.textContent = '';
+        formError.style.display = 'none';
+    }
+
+    // Mostra toast
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 4000);
+    }
+
+    // Tradução de erros do Firebase
+    function translateError(code) {
+        const errors = {
+            'auth/email-already-in-use': 'Este e-mail já está em uso.',
+            'auth/invalid-email': 'E-mail inválido.',
+            'auth/weak-password': 'A senha deve ter pelo menos 6 caracteres.',
+            'auth/operation-not-allowed': 'Operação não permitida.'
+        };
+        return errors[code] || 'Erro ao criar conta. Tente novamente.';
+    }
+
+    // Cadastro
+    registerForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        hideError();
+        
+        const name = nameInput.value.trim();
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        // Validação da senha
+        if (password.length < 8) {
+            showError('A senha deve ter pelo menos 8 caracteres.');
+            return;
+        }
+        
+        // Validação de confirmação
+        if (password !== confirmPassword) {
+            showError('As senhas não coincidem.');
+            return;
+        }
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Criando conta...';
+        
+        try {
+            // Aguarda o Firebase estar inicializado
+            let attempts = 0;
+            while (!window.firebaseAuth && attempts < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+            
+            if (!window.firebaseAuth) {
+                throw new Error('Firebase não inicializado');
+            }
+            
+            // Cria o usuário no Firebase
+            const userCredential = await createUserWithEmailAndPassword(window.firebaseAuth, email, password);
+            const idToken = await userCredential.user.getIdToken();
+            
+            // Envia os dados para o servidor
+            const response = await fetch('/cadastro', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id_token: idToken, name: name })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('Conta criada com sucesso!', 'success');
+                // Redireciona para a página de cursos após 1 segundo
+                setTimeout(() => {
+                    window.location.href = '/cursos';
+                }, 1000);
+            } else {
+                showError(data.error || 'Erro ao criar conta');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Criar Conta';
+            }
+        } catch (error) {
+            console.error('Erro no cadastro:', error);
+            showError(translateError(error.code));
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Criar Conta';
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course.title }} — J-Finance{% endblock %}
+
+{% block content %}
+<!-- Banner do curso -->
+<section class="course-hero" {% if course.thumbnail %}style="background-image: url('{{ course.thumbnail }}');"{% endif %}>
+    <div class="course-hero__overlay"></div>
+    <div class="container">
+        <div class="course-hero__content">
+            <h1 class="course-hero__title">{{ course.title }}</h1>
+            <p class="course-hero__description">{{ course.description }}</p>
+        </div>
+    </div>
+</section>
+
+<!-- Conteúdo do curso -->
+<section class="section section--course-content">
+    <div class="container">
+        <div class="course-grid">
+            <!-- Coluna principal -->
+            <div class="course-main">
+                <!-- Descrição completa -->
+                <div class="course-description">
+                    <h2 class="section-subtitle">{{ t('course_about') }}</h2>
+                    <p>{{ course.description }}</p>
+                </div>
+
+                <!-- O que você vai aprender -->
+                {% if course.highlights %}
+                <div class="course-highlights">
+                    <h2 class="section-subtitle">{{ t('course_highlights') }}</h2>
+                    <ul class="highlights-list">
+                        {% for highlight in course.highlights %}
+                        <li class="highlight-item">
+                            <svg class="highlight-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            <span>{{ highlight }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Barra de progresso -->
+                <div class="progress-section">
+                    <h2 class="section-subtitle">{{ t('course_progress') }}</h2>
+                    <div class="progress-bar">
+                        <div class="progress-bar__fill" style="width: {{ progress }}%;"></div>
+                    </div>
+                    <p class="progress-text">{{ progress }}% {{ t('course_progress_pct') }}</p>
+                </div>
+            </div>
+
+            <!-- Sidebar com módulos -->
+            <aside class="course-sidebar">
+                <div class="modules-card">
+                    <h2 class="modules-card__title">{{ t('course_content') }}</h2>
+                    
+                    {% if course.modules %}
+                    <div class="modules-accordion">
+                        {% for module in course.modules %}
+                        <div class="module-item">
+                            <button class="module-header" aria-expanded="false">
+                                <span class="module-title">{{ module.title }}</span>
+                                <svg class="module-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </button>
+                            <div class="module-content">
+                                {% if module.lessons %}
+                                <ul class="lessons-list">
+                                    {% for lesson in module.lessons %}
+                                    <li class="lesson-item">
+                                        <div class="lesson-info">
+                                            <svg class="lesson-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon points="5 3 19 12 5 21 5 3"/>
+                                            </svg>
+                                            <span class="lesson-title">{{ lesson.title }}</span>
+                                        </div>
+                                        <div class="lesson-actions">
+                                            {% if lesson.duration %}
+                                            <span class="lesson-duration">{{ lesson.duration }}</span>
+                                            {% endif %}
+                                            <a href="/aula/{{ course.id }}/{{ module.id }}/{{ lesson.id }}" class="btn btn-sm btn-primary">{{ t('course_start') }}</a>
+                                        </div>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p class="no-lessons">{{ t('course_no_lessons') }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="no-modules">{{ t('course_no_content') }}</p>
+                    {% endif %}
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block head %}
+<style>
+    /* Banner do curso */
+    .course-hero {
+        position: relative;
+        padding: var(--space-20) 0;
+        background: var(--color-primary);
+        background-size: cover;
+        background-position: center;
+    }
+
+    .course-hero__overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, rgba(10, 22, 40, 0.7), rgba(10, 22, 40, 0.9));
+    }
+
+    .course-hero__content {
+        position: relative;
+        z-index: 1;
+        max-width: 720px;
+    }
+
+    .course-hero__title {
+        font-family: var(--font-display);
+        font-size: var(--text-3xl);
+        color: var(--color-text-inverse);
+        margin-bottom: var(--space-4);
+    }
+
+    .course-hero__description {
+        font-size: var(--text-lg);
+        color: var(--color-text-inverse);
+        opacity: 0.85;
+    }
+
+    /* Seção de conteúdo */
+    .section--course-content {
+        padding: var(--space-12) 0 var(--space-20);
+        background: var(--color-bg);
+    }
+
+    .course-grid {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: var(--space-8);
+    }
+
+    /* Coluna principal */
+    .course-main {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-8);
+    }
+
+    .section-subtitle {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        color: var(--color-text);
+        margin-bottom: var(--space-4);
+    }
+
+    .course-description {
+        color: var(--color-text-muted);
+        line-height: 1.7;
+    }
+
+    .course-description p {
+        margin-bottom: var(--space-3);
+    }
+
+    /* Highlights */
+    .highlights-list {
+        list-style: none;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+
+    .highlight-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        color: var(--color-text);
+    }
+
+    .highlight-icon {
+        flex-shrink: 0;
+        color: var(--color-success);
+        margin-top: 2px;
+    }
+
+    /* Progresso */
+    .progress-section {
+        background: var(--color-surface);
+        padding: var(--space-5);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border);
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: var(--color-surface-offset);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+        margin-bottom: var(--space-2);
+    }
+
+    .progress-bar__fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--color-gold) 0%, var(--color-gold-hover) 100%);
+        border-radius: var(--radius-full);
+        transition: width 0.5s ease;
+    }
+
+    .progress-text {
+        font-size: var(--text-sm);
+        color: var(--color-text-muted);
+    }
+
+    /* Sidebar */
+    .course-sidebar {
+        position: sticky;
+        top: calc(var(--space-16) + 60px);
+        align-self: start;
+    }
+
+    .modules-card {
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border);
+        overflow: hidden;
+    }
+
+    .modules-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-lg);
+        padding: var(--space-4) var(--space-5);
+        border-bottom: 1px solid var(--color-divider);
+        background: var(--color-surface-offset);
+    }
+
+    /* Accordion de módulos */
+    .modules-accordion {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .module-item {
+        border-bottom: 1px solid var(--color-divider);
+    }
+
+    .module-item:last-child {
+        border-bottom: none;
+    }
+
+    .module-header {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-4) var(--space-5);
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-align: left;
+        transition: background var(--transition-fast);
+    }
+
+    .module-header:hover {
+        background: var(--color-surface-offset);
+    }
+
+    .module-header[aria-expanded="true"] .module-chevron {
+        transform: rotate(180deg);
+    }
+
+    .module-title {
+        font-weight: 500;
+        color: var(--color-text);
+    }
+
+    .module-chevron {
+        color: var(--color-text-muted);
+        transition: transform var(--transition-fast);
+    }
+
+    .module-content {
+        display: none;
+        padding: 0 var(--space-5) var(--space-4);
+    }
+
+    .module-content.is-open {
+        display: block;
+    }
+
+    /* Lista de aulas */
+    .lessons-list {
+        list-style: none;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .lesson-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-3);
+        background: var(--color-surface-offset);
+        border-radius: var(--radius-md);
+        transition: background var(--transition-fast);
+    }
+
+    .lesson-item:hover {
+        background: var(--color-surface-dynamic);
+    }
+
+    .lesson-info {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+
+    .lesson-icon {
+        color: var(--color-primary);
+        flex-shrink: 0;
+    }
+
+    .lesson-title {
+        font-size: var(--text-sm);
+        color: var(--color-text);
+    }
+
+    .lesson-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+    }
+
+    .lesson-duration {
+        font-size: var(--text-xs);
+        color: var(--color-text-muted);
+    }
+
+    .btn-sm {
+        padding: var(--space-1) var(--space-3);
+        font-size: var(--text-xs);
+        min-height: 32px;
+    }
+
+    .no-lessons,
+    .no-modules {
+        padding: var(--space-4);
+        text-align: center;
+        color: var(--color-text-muted);
+        font-size: var(--text-sm);
+    }
+
+    /* Responsivo */
+    @media (max-width: 992px) {
+        .course-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .course-sidebar {
+            position: static;
+            order: -1;
+        }
+
+        .modules-accordion {
+            max-height: none;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .course-hero {
+            padding: var(--space-12) 0;
+        }
+
+        .course-hero__title {
+            font-size: var(--text-2xl);
+        }
+
+        .lesson-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: var(--space-2);
+        }
+
+        .lesson-actions {
+            width: 100%;
+            justify-content: space-between;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Accordion de módulos
+    (function() {
+        const moduleHeaders = document.querySelectorAll('.module-header');
+        
+        moduleHeaders.forEach(header => {
+            header.addEventListener('click', function() {
+                const content = this.nextElementSibling;
+                const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                
+                // Fecha todos os outros
+                moduleHeaders.forEach(h => {
+                    if (h !== this) {
+                        h.setAttribute('aria-expanded', 'false');
+                        h.nextElementSibling.classList.remove('is-open');
+                    }
+                });
+                
+                // Toggle do atual
+                this.setAttribute('aria-expanded', !isExpanded);
+                content.classList.toggle('is-open');
+            });
+        });
+
+        // Abre o primeiro módulo por padrão
+        if (moduleHeaders.length > 0) {
+            moduleHeaders[0].click();
+        }
+    })();
+</script>
+{% endblock %}

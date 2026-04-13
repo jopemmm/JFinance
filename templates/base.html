@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{{ page_description | default('J-Finance — Matemática de alto nível') }}">
+    <title>{% block title %}{{ t('nav_home') }} — J-Finance{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Script Anti-FOUC -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('jfinance-theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+        })();
+    </script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}?v=12">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v=12">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}?v=12">
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Header/Navbar -->
+    <header class="navbar" id="navbar">
+        <!-- Logo à esquerda -->
+        <a href="/" class="navbar__logo" aria-label="J-Finance - {{ t('nav_home') }}">
+            <svg width="48" height="32" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Letra J estilizada -->
+                <text x="8" y="26" font-family="Outfit, sans-serif" font-size="28" font-weight="700" fill="var(--color-text)">J</text>
+                <!-- Linha dourada horizontal -->
+                <line x1="2" y1="16" x2="46" y2="16" stroke="#C9A84C" stroke-width="1.5"/>
+            </svg>
+        </a>
+
+        <!-- Navegação central -->
+        <nav class="navbar__center">
+            <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">{{ t('nav_home') }}</a>
+            <a href="/blog" class="nav-link {% if request.path.startswith('/blog') or request.path.startswith('/post') %}active{% endif %}">{{ t('nav_news') }}</a>
+            <a href="/cursos" class="nav-link {% if request.path.startswith('/cursos') or request.path.startswith('/curso') or request.path.startswith('/aula') %}active{% endif %}">{{ t('nav_courses') }}</a>
+            {% if session.email == config.ADMIN_EMAIL %}
+            <a href="/admin" class="nav-link {% if request.path.startswith('/admin') %}active{% endif %}">{{ t('nav_admin') }}</a>
+            {% endif %}
+        </nav>
+
+        <!-- Ações à direita -->
+        <div class="navbar__right">
+            <!-- Botão de tema -->
+            <button class="btn btn-ghost theme-toggle" id="theme-toggle" aria-label="{{ t('nav_theme') }}">
+                <!-- Sun icon (shown in dark mode - click to switch to light) -->
+                <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                <!-- Moon icon (shown in light mode - click to switch to dark) -->
+                <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
+
+            {% if session.user_id %}
+                <!-- Usuário logado -->
+                <span class="navbar__user-name">{{ t('nav_hello') }}, {{ session.name }}</span>
+                <a href="/logout" class="btn btn-ghost">{{ t('nav_logout') }}</a>
+            {% else %}
+                <!-- Usuário não logado -->
+                <a href="/login" class="btn btn-ghost">{{ t('nav_login') }}</a>
+                <a href="/cadastro" class="btn btn-ghost" style="border-color: var(--color-gold); color: var(--color-gold);">{{ t('nav_register') }}</a>
+            {% endif %}
+        </div>
+
+        <!-- Menu hamburguer (mobile) -->
+        <button class="hamburger" id="hamburger-btn" aria-label="{{ t('nav_menu') }}">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+        </button>
+    </header>
+
+    <!-- Drawer mobile -->
+    <div class="mobile-drawer" id="mobile-drawer">
+        <div class="mobile-drawer__overlay" id="drawer-overlay"></div>
+        <div class="mobile-drawer__content">
+            <button class="mobile-drawer__close" id="drawer-close" aria-label="{{ t('nav_close') }}">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+            <nav class="mobile-drawer__nav">
+                <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">{{ t('nav_home') }}</a>
+                <a href="/blog" class="nav-link {% if request.path.startswith('/blog') or request.path.startswith('/post') %}active{% endif %}">{{ t('nav_news') }}</a>
+                <a href="/cursos" class="nav-link {% if request.path.startswith('/cursos') or request.path.startswith('/curso') or request.path.startswith('/aula') %}active{% endif %}">{{ t('nav_courses') }}</a>
+                {% if session.email == config.ADMIN_EMAIL %}
+                <a href="/admin" class="nav-link {% if request.path.startswith('/admin') %}active{% endif %}">{{ t('nav_admin') }}</a>
+                {% endif %}
+            </nav>
+            <div class="mobile-drawer__actions">
+                <!-- Botão de tema (mobile) -->
+                <button class="btn btn-ghost btn--full theme-toggle-mobile" id="theme-toggle-mobile" aria-label="{{ t('nav_theme') }}">
+                    <span class="theme-toggle-mobile__icon">
+                        <!-- Sun icon (shown in dark mode - click to switch to light) -->
+                        <svg class="icon-sun-mobile" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/>
+                            <line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/>
+                            <line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                        <!-- Moon icon (shown in light mode - click to switch to dark) -->
+                        <svg class="icon-moon-mobile" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </span>
+                    <span class="theme-toggle-mobile__text">{{ t('nav_theme') }}</span>
+                </button>
+
+                {% if session.user_id %}
+                    <span class="navbar__user-name">{{ t('nav_hello') }}, {{ session.name }}</span>
+                    <a href="/logout" class="btn btn-ghost btn--full">{{ t('nav_logout') }}</a>
+                {% else %}
+                    <a href="/login" class="btn btn-ghost btn--full">{{ t('nav_login') }}</a>
+                    <a href="/cadastro" class="btn btn-gold btn--full">{{ t('nav_register') }}</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo principal -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer__top">
+            <div class="footer__brand">
+                <svg width="64" height="40" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <text x="8" y="26" font-family="Outfit, sans-serif" font-size="28" font-weight="700" fill="#F7F5F0">J</text>
+                    <line x1="2" y1="16" x2="46" y2="16" stroke="#C9A84C" stroke-width="1.5"/>
+                </svg>
+                <p class="footer__tagline">{{ t('footer_tagline') }}</p>
+            </div>
+            <div class="footer__columns">
+                <div class="footer__column">
+                    <h4>Notícias</h4>
+                    <ul>
+                        <li><a href="/blog">Todos os posts</a></li>
+                    </ul>
+                </div>
+                <div class="footer__column">
+                    <h4>Aulas</h4>
+                    <ul>
+                        <li><a href="/cursos">Todos os cursos</a></li>
+                        <li><a href="/login">Entrar</a></li>
+                        <li><a href="/cadastro">Cadastro</a></li>
+                    </ul>
+                </div>
+                <div class="footer__column">
+                    <h4>Sobre HiFin</h4>
+                    <ul>
+                        <li><a href="/">Página inicial</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer__bottom">
+            <p>&copy; 2025 J-Finance. {{ t('footer_rights') }}</p>
+        </div>
+    </footer>
+
+    <!-- Firebase SDK (módulos ES6) -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        
+        // Torna disponível globalmente para auth.js
+        window.firebaseApp = null;
+        window.firebaseAuth = null;
+        
+        // Busca a configuração do Firebase do servidor
+        fetch('/api/firebase-config')
+            .then(res => res.json())
+            .then(config => {
+                window.firebaseApp = initializeApp(config);
+                window.firebaseAuth = getAuth(window.firebaseApp);
+            })
+            .catch(err => console.error('Erro ao carregar configuração do Firebase:', err));
+    </script>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/theme.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}?v=3"></script>
+
+    <!-- Mobile drawer toggle -->
+    <script>
+        // Toggle do menu mobile
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const mobileDrawer = document.getElementById('mobile-drawer');
+        const drawerOverlay = document.getElementById('drawer-overlay');
+        const drawerClose = document.getElementById('drawer-close');
+
+        function openDrawer() {
+            mobileDrawer.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDrawer() {
+            mobileDrawer.classList.remove('is-open');
+            document.body.style.overflow = '';
+        }
+
+        if (hamburgerBtn) hamburgerBtn.addEventListener('click', openDrawer);
+        if (drawerOverlay) drawerOverlay.addEventListener('click', closeDrawer);
+        if (drawerClose) drawerClose.addEventListener('click', closeDrawer);
+
+        // Efeito de scroll no navbar
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 10) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

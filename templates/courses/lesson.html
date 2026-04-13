@@ -1,0 +1,588 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lesson.title }} — {{ course.title }} — J-Finance{% endblock %}
+
+{% block head %}
+<!-- KaTeX para renderização de fórmulas matemáticas -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+<style>
+    /* Theme enforcement - ensure proper colors */
+    html {
+        background: var(--color-bg);
+    }
+    
+    body {
+        background: var(--color-bg) !important;
+        color: var(--color-text) !important;
+    }
+    
+    /* Layout da aula */
+    .lesson-layout {
+        display: flex;
+        min-height: calc(100vh - 60px);
+        background: var(--color-bg);
+    }
+
+    /* Sidebar */
+    .lesson-sidebar {
+        width: 280px;
+        background: var(--color-surface);
+        border-right: 1px solid var(--color-divider);
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 60px;
+        bottom: 0;
+        left: 0;
+        overflow-y: auto;
+        z-index: 50;
+    }
+
+    .sidebar-header {
+        padding: var(--space-4);
+        border-bottom: 1px solid var(--color-divider);
+        background: var(--color-surface-offset);
+    }
+
+    .sidebar-course-title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        color: var(--color-text);
+        margin-bottom: var(--space-2);
+    }
+
+    .sidebar-progress {
+        font-size: var(--text-xs);
+        color: var(--color-text-muted);
+    }
+
+    .sidebar-modules {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .sidebar-module {
+        border-bottom: 1px solid var(--color-divider);
+    }
+
+    .sidebar-module__header {
+        padding: var(--space-3) var(--space-4);
+        font-weight: 500;
+        font-size: var(--text-sm);
+        color: var(--color-text);
+        background: var(--color-surface-offset);
+    }
+
+    .sidebar-lessons {
+        list-style: none;
+        padding: 0;
+    }
+
+    .sidebar-lesson {
+        border-left: 3px solid transparent;
+        transition: all var(--transition-fast);
+    }
+
+    .sidebar-lesson--current {
+        border-left-color: var(--color-gold);
+        background: var(--color-primary-highlight);
+    }
+
+    .sidebar-lesson a {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-4);
+        font-size: var(--text-sm);
+        color: var(--color-text-muted);
+        transition: color var(--transition-fast);
+    }
+
+    .sidebar-lesson:hover a {
+        color: var(--color-text);
+    }
+
+    .sidebar-lesson--current a {
+        color: var(--color-text);
+    }
+
+    .lesson-icon {
+        flex-shrink: 0;
+        color: var(--color-primary);
+    }
+
+    .sidebar-lesson--current .lesson-icon {
+        color: var(--color-gold);
+    }
+
+    /* Conteúdo principal */
+    .lesson-main {
+        flex: 1;
+        margin-left: 280px;
+        padding: var(--space-8) var(--space-10);
+        background: var(--color-bg) !important;
+        min-height: calc(100vh - 60px);
+    }
+    
+    /* KaTeX theme override */
+    .katex {
+        color: var(--color-text) !important;
+    }
+    
+    .katex-display {
+        color: var(--color-text) !important;
+    }
+
+    .lesson-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .lesson-title {
+        font-family: var(--font-display);
+        font-size: var(--text-2xl);
+        color: var(--color-text);
+        margin-bottom: var(--space-6);
+    }
+
+    /* Vídeo */
+    .lesson-video {
+        margin-bottom: var(--space-8);
+    }
+
+    .video-wrapper {
+        position: relative;
+        padding-bottom: 56.25%; /* 16:9 */
+        height: 0;
+        overflow: hidden;
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-offset);
+    }
+
+    .video-wrapper iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+
+    /* Conteúdo da aula */
+    .lesson-content {
+        font-size: var(--text-lg);
+        line-height: 1.8;
+        color: var(--color-text);
+    }
+
+    .lesson-content h2,
+    .lesson-content h3,
+    .lesson-content h4 {
+        font-family: var(--font-display);
+        color: var(--color-text);
+        margin-top: var(--space-8);
+        margin-bottom: var(--space-4);
+    }
+
+    .lesson-content h2 {
+        font-size: var(--text-xl);
+    }
+
+    .lesson-content h3 {
+        font-size: var(--text-lg);
+    }
+
+    .lesson-content p {
+        margin-bottom: var(--space-4);
+    }
+
+    .lesson-content a {
+        color: var(--color-primary);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    .lesson-content a:hover {
+        color: var(--color-primary-hover);
+    }
+
+    .lesson-content blockquote {
+        border-left: 3px solid var(--color-gold);
+        padding-left: var(--space-4);
+        margin: var(--space-6) 0;
+        font-style: italic;
+        color: var(--color-text-muted);
+    }
+
+    .lesson-content ul,
+    .lesson-content ol {
+        margin: var(--space-4) 0;
+        padding-left: var(--space-6);
+    }
+
+    .lesson-content li {
+        margin-bottom: var(--space-2);
+    }
+
+    .lesson-content code {
+        font-family: var(--font-mono);
+        font-size: 0.9em;
+        background: var(--color-surface-offset);
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        color: var(--color-primary);
+    }
+
+    .lesson-content pre {
+        font-family: var(--font-mono);
+        background: var(--color-surface-offset);
+        padding: var(--space-4);
+        border-radius: var(--radius-md);
+        overflow-x: auto;
+        margin: var(--space-4) 0;
+    }
+
+    .lesson-content pre code {
+        background: none;
+        padding: 0;
+        color: var(--color-text);
+    }
+
+    /* KaTeX */
+    .katex-display {
+        margin: var(--space-4) 0;
+        overflow-x: auto;
+    }
+
+    /* Navegação */
+    .lesson-navigation {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: var(--space-12);
+        padding-top: var(--space-6);
+        border-top: 1px solid var(--color-divider);
+    }
+
+    .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-3) var(--space-5);
+        border-radius: var(--radius-md);
+        font-weight: 500;
+        font-size: var(--text-sm);
+        transition: all var(--transition);
+    }
+
+    .nav-btn--prev {
+        background: var(--color-surface);
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
+    }
+
+    .nav-btn--prev:hover {
+        background: var(--color-surface-offset);
+    }
+
+    .nav-btn--next {
+        background: var(--color-primary);
+        color: var(--color-text-inverse);
+    }
+
+    .nav-btn--next:hover {
+        background: var(--color-primary-hover);
+    }
+
+    .nav-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Botão flutuante para mobile */
+    .mobile-menu-btn {
+        display: none;
+        position: fixed;
+        bottom: var(--space-4);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        background: var(--color-primary);
+        color: var(--color-text-inverse);
+        padding: var(--space-3) var(--space-5);
+        border-radius: var(--radius-full);
+        font-weight: 500;
+        font-size: var(--text-sm);
+        box-shadow: var(--shadow-lg);
+        border: none;
+        cursor: pointer;
+    }
+
+    /* Bottom sheet para mobile */
+    .bottom-sheet {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+    }
+
+    .bottom-sheet__overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .bottom-sheet__content {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-height: 80vh;
+        background: var(--color-surface);
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        overflow-y: auto;
+    }
+
+    .bottom-sheet__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-4);
+        border-bottom: 1px solid var(--color-divider);
+        position: sticky;
+        top: 0;
+        background: var(--color-surface);
+    }
+
+    .bottom-sheet__close {
+        background: none;
+        border: none;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        padding: var(--space-2);
+    }
+
+    .bottom-sheet.is-open {
+        display: block;
+    }
+
+    /* Responsivo */
+    @media (max-width: 992px) {
+        .lesson-sidebar {
+            display: none;
+        }
+
+        .lesson-main {
+            margin-left: 0;
+            padding: var(--space-6);
+        }
+
+        .mobile-menu-btn {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .lesson-title {
+            font-size: var(--text-xl);
+        }
+
+        .lesson-navigation {
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+
+        .nav-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="lesson-layout">
+    <!-- Sidebar -->
+    <aside class="lesson-sidebar" id="lesson-sidebar">
+        <div class="sidebar-header">
+            <h2 class="sidebar-course-title">{{ course.title }}</h2>
+            <p class="sidebar-progress">{{ t('course_progress') }}: {{ course.progress | default(0) }}%</p>
+        </div>
+        <div class="sidebar-modules">
+            {% for module in modules %}
+            <div class="sidebar-module">
+                <div class="sidebar-module__header">{{ module.title }}</div>
+                <ul class="sidebar-lessons">
+                    {% for lesson_item in module.lessons %}
+                    <li class="sidebar-lesson {% if current_module_id == module.id and current_lesson_id == lesson_item.id %}sidebar-lesson--current{% endif %}">
+                        <a href="/aula/{{ course.id }}/{{ module.id }}/{{ lesson_item.id }}">
+                            <svg class="lesson-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"/>
+                            </svg>
+                            <span>{{ lesson_item.title }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+    </aside>
+
+    <!-- Conteúdo principal -->
+    <main class="lesson-main">
+        <div class="lesson-container">
+            <h1 class="lesson-title">{{ lesson.title }}</h1>
+
+            <!-- Vídeo (se existir) -->
+            {% if lesson.video_url %}
+            <div class="lesson-video">
+                <div class="video-wrapper">
+                    <iframe 
+                        src="{{ lesson.video_url }}" 
+                        title="{{ lesson.title }}"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                    ></iframe>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Conteúdo da aula -->
+            <div class="lesson-content">
+                {{ lesson.content | safe }}
+            </div>
+
+            <!-- Navegação -->
+            <nav class="lesson-navigation">
+                {% if previous_lesson %}
+                <a href="/aula/{{ course.id }}/{{ previous_lesson.module_id }}/{{ previous_lesson.id }}" class="nav-btn nav-btn--prev">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"/>
+                        <polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    {{ t('lesson_prev') }}
+                </a>
+                {% else %}
+                <button class="nav-btn nav-btn--prev" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"/>
+                        <polyline points="12 19 5 12 12 5"/>
+                    </svg>
+                    {{ t('lesson_prev') }}
+                </button>
+                {% endif %}
+
+                {% if next_lesson %}
+                <a href="/aula/{{ course.id }}/{{ next_lesson.module_id }}/{{ next_lesson.id }}" class="nav-btn nav-btn--next">
+                    {{ t('lesson_next') }}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+                {% else %}
+                <button class="nav-btn nav-btn--next" disabled>
+                    {{ t('lesson_next') }}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </button>
+                {% endif %}
+            </nav>
+        </div>
+    </main>
+</div>
+
+<!-- Botão flutuante para mobile -->
+<button class="mobile-menu-btn" id="mobile-menu-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+    {{ t('course_content') }}
+</button>
+
+<!-- Bottom sheet para mobile -->
+<div class="bottom-sheet" id="bottom-sheet">
+    <div class="bottom-sheet__overlay" id="bottom-sheet-overlay"></div>
+    <div class="bottom-sheet__content">
+        <div class="bottom-sheet__header">
+            <h3>{{ course.title }}</h3>
+            <button class="bottom-sheet__close" id="bottom-sheet-close">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="sidebar-modules">
+            {% for module in modules %}
+            <div class="sidebar-module">
+                <div class="sidebar-module__header">{{ module.title }}</div>
+                <ul class="sidebar-lessons">
+                    {% for lesson_item in module.lessons %}
+                    <li class="sidebar-lesson {% if current_module_id == module.id and current_lesson_id == lesson_item.id %}sidebar-lesson--current{% endif %}">
+                        <a href="/aula/{{ course.id }}/{{ module.id }}/{{ lesson_item.id }}">
+                            <svg class="lesson-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"/>
+                            </svg>
+                            <span>{{ lesson_item.title }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Inicializa o KaTeX para renderizar fórmulas matemáticas
+    document.addEventListener("DOMContentLoaded", function() {
+        if (typeof renderMathInElement !== 'undefined') {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\[", right: "\\]", display: true},
+                    {left: "\\(", right: "\\)", display: false}
+                ],
+                throwOnError: false
+            });
+        }
+    });
+
+    // Bottom sheet para mobile
+    (function() {
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const bottomSheet = document.getElementById('bottom-sheet');
+        const bottomSheetOverlay = document.getElementById('bottom-sheet-overlay');
+        const bottomSheetClose = document.getElementById('bottom-sheet-close');
+
+        function openBottomSheet() {
+            bottomSheet.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeBottomSheet() {
+            bottomSheet.classList.remove('is-open');
+            document.body.style.overflow = '';
+        }
+
+        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openBottomSheet);
+        if (bottomSheetOverlay) bottomSheetOverlay.addEventListener('click', closeBottomSheet);
+        if (bottomSheetClose) bottomSheetClose.addEventListener('click', closeBottomSheet);
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,431 @@
+{% extends "base.html" %}
+
+{% block title %}{% if post %}{{ t('post_editor_edit') }}{% else %}{{ t('post_editor_new') }}{% endif %}{% endblock %}
+
+{% block head %}
+<!-- Quill.js CSS -->
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+
+<style>
+    /* Seção do editor */
+    .section--editor {
+        padding: var(--space-12) 0 var(--space-20);
+        background: var(--color-bg);
+        min-height: calc(100vh - 200px);
+    }
+
+    /* Cabeçalho */
+    .editor-header {
+        margin-bottom: var(--space-8);
+    }
+
+    .page-title {
+        font-family: var(--font-display);
+        font-size: var(--text-2xl);
+        color: var(--color-text);
+    }
+
+    /* Formulário */
+    .editor-form {
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border);
+        padding: var(--space-6);
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-4);
+        margin-bottom: var(--space-6);
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
+    .form-group--full {
+        grid-column: 1 / -1;
+    }
+
+    .form-label {
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--color-text-muted);
+    }
+
+    .form-input,
+    .form-textarea {
+        padding: var(--space-3) var(--space-4);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        background: var(--color-surface-2);
+        color: var(--color-text);
+        font-size: var(--text-base);
+        transition: border-color var(--transition);
+    }
+
+    .form-input:focus,
+    .form-textarea:focus {
+        border-color: var(--color-primary);
+        outline: none;
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    .form-hint {
+        font-size: var(--text-xs);
+        color: var(--color-text-faint);
+    }
+
+    /* Contador de caracteres */
+    .char-counter {
+        font-size: var(--text-xs);
+        color: var(--color-text-muted);
+        text-align: right;
+        margin-top: var(--space-1);
+    }
+
+    .char-counter--limit {
+        color: var(--color-error);
+    }
+
+    /* Preview da imagem */
+    .image-preview-wrapper {
+        margin-top: var(--space-3);
+    }
+
+    .image-preview {
+        max-width: 300px;
+        max-height: 200px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--color-border);
+    }
+
+    .image-preview-placeholder {
+        width: 300px;
+        height: 150px;
+        background: var(--color-surface-offset);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-muted);
+        font-size: var(--text-sm);
+    }
+
+    /* Editor Quill */
+    .editor-wrapper {
+        margin-bottom: var(--space-6);
+    }
+
+    .ql-toolbar {
+        border-color: var(--color-border) !important;
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+        background: var(--color-surface-2);
+    }
+
+    .ql-container {
+        border-color: var(--color-border) !important;
+        border-radius: 0 0 var(--radius-md) var(--radius-md);
+        background: var(--color-surface-2);
+        min-height: 400px;
+    }
+
+    .ql-editor {
+        font-size: var(--text-base);
+        line-height: 1.7;
+    }
+
+    .ql-editor p {
+        margin-bottom: var(--space-3);
+    }
+
+    /* Toggle de publicação */
+    .publish-toggle {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        background: var(--color-surface-offset);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--space-6);
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 48px;
+        height: 24px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: var(--color-border);
+        border-radius: var(--radius-full);
+        transition: background var(--transition);
+    }
+
+    .toggle-slider::before {
+        content: '';
+        position: absolute;
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background: white;
+        border-radius: 50%;
+        transition: transform var(--transition);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+        background: var(--color-success);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(24px);
+    }
+
+    .toggle-label {
+        font-weight: 500;
+        color: var(--color-text);
+    }
+
+    /* Ações do formulário */
+    .form-actions {
+        display: flex;
+        gap: var(--space-3);
+        justify-content: flex-end;
+    }
+
+    /* Responsivo */
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .form-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .ql-container {
+            min-height: 300px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section section--editor">
+    <div class="container">
+        <!-- Cabeçalho -->
+        <header class="editor-header">
+            <h1 class="page-title">{% if post %}{{ t('post_editor_heading_edit') }}{% else %}{{ t('post_editor_heading_new') }}{% endif %}</h1>
+        </header>
+
+        <!-- Formulário -->
+        <form class="editor-form" method="POST" id="post-form">
+            <div class="form-grid">
+                <!-- Título -->
+                <div class="form-group form-group--full">
+                    <label for="title" class="form-label">Título</label>
+                    <input 
+                        type="text" 
+                        id="title" 
+                        name="title" 
+                        class="form-input" 
+                        placeholder="Título do post"
+                        value="{{ post.title | default('') }}"
+                        required
+                    >
+                </div>
+
+                <!-- Slug -->
+                <div class="form-group">
+                    <label for="slug" class="form-label">Slug</label>
+                    <input 
+                        type="text" 
+                        id="slug" 
+                        name="slug" 
+                        class="form-input" 
+                        placeholder="titulo-do-post"
+                        value="{{ post.slug | default('') }}"
+                    >
+                    <span class="form-hint">Apenas letras minúsculas, números e hífens</span>
+                </div>
+
+                <!-- Tags -->
+                <div class="form-group">
+                    <label for="tags" class="form-label">Tags</label>
+                    <input 
+                        type="text" 
+                        id="tags" 
+                        name="tags" 
+                        class="form-input" 
+                        placeholder="Álgebra, Cálculo, Estatística"
+                        value="{{ post.tags | default([]) | join(', ') }}"
+                    >
+                    <span class="form-hint">Separe as tags com vírgulas</span>
+                </div>
+
+                <!-- Resumo -->
+                <div class="form-group form-group--full">
+                    <label for="summary" class="form-label">Resumo</label>
+                    <textarea 
+                        id="summary" 
+                        name="summary" 
+                        class="form-textarea" 
+                        placeholder="Breve resumo do post (máximo 200 caracteres)"
+                        maxlength="200"
+                        rows="3"
+                    >{{ post.summary | default('') }}</textarea>
+                    <div class="char-counter" id="summary-counter">0 / 200</div>
+                </div>
+
+                <!-- Imagem de capa -->
+                <div class="form-group form-group--full">
+                    <label for="cover_image" class="form-label">URL da imagem de capa</label>
+                    <input 
+                        type="url" 
+                        id="cover_image" 
+                        name="cover_image" 
+                        class="form-input" 
+                        placeholder="https://exemplo.com/imagem.jpg"
+                        value="{{ post.cover_image | default('') }}"
+                    >
+                    <div class="image-preview-wrapper" id="image-preview-wrapper">
+                        {% if post.cover_image %}
+                        <img src="{{ post.cover_image }}" alt="Preview" class="image-preview" id="image-preview">
+                        {% else %}
+                        <div class="image-preview-placeholder" id="image-preview-placeholder">Preview da imagem</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Editor de conteúdo -->
+            <div class="editor-wrapper">
+                <label class="form-label">Conteúdo</label>
+                <div id="editor">{{ post.content | default('') | safe }}</div>
+                <input type="hidden" name="content" id="content-hidden">
+            </div>
+
+            <!-- Toggle de publicação -->
+            <div class="publish-toggle">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="published" id="published" {% if post.published | default(true) %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">Publicar post</span>
+            </div>
+
+            <!-- Ações -->
+            <div class="form-actions">
+                <a href="/admin" class="btn btn-ghost">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Salvar Notícia</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<!-- Quill.js -->
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+
+<script>
+    // Inicializa o Quill editor
+    const quill = new Quill('#editor', {
+        theme: 'snow',
+        placeholder: 'Escreva o conteúdo do post aqui...',
+        modules: {
+            toolbar: [
+                ['bold', 'italic'],
+                [{ 'header': [2, 3, false] }],
+                ['blockquote'],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                ['link', 'code-block', 'image']
+            ]
+        }
+    });
+
+    // Gera slug automaticamente do título
+    function generateSlug(title) {
+        return title
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9\s-]/g, '')
+            .trim()
+            .replace(/\s+/g, '-');
+    }
+
+    // Atualiza o slug quando o título muda (se o slug estiver vazio)
+    const titleInput = document.getElementById('title');
+    const slugInput = document.getElementById('slug');
+
+    titleInput.addEventListener('blur', function() {
+        if (!slugInput.value.trim()) {
+            slugInput.value = generateSlug(this.value);
+        }
+    });
+
+    // Contador de caracteres do resumo
+    const summaryInput = document.getElementById('summary');
+    const summaryCounter = document.getElementById('summary-counter');
+
+    function updateCharCounter() {
+        const length = summaryInput.value.length;
+        summaryCounter.textContent = `${length} / 200`;
+        
+        if (length >= 200) {
+            summaryCounter.classList.add('char-counter--limit');
+        } else {
+            summaryCounter.classList.remove('char-counter--limit');
+        }
+    }
+
+    summaryInput.addEventListener('input', updateCharCounter);
+    updateCharCounter(); // Atualiza no carregamento
+
+    // Preview da imagem de capa
+    const coverImageInput = document.getElementById('cover_image');
+    const imagePreviewWrapper = document.getElementById('image-preview-wrapper');
+
+    coverImageInput.addEventListener('blur', function() {
+        const url = this.value.trim();
+        
+        if (url) {
+            imagePreviewWrapper.innerHTML = `<img src="${url}" alt="Preview" class="image-preview" id="image-preview" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'image-preview-placeholder\\'>Erro ao carregar imagem</div>';">`;
+        } else {
+            imagePreviewWrapper.innerHTML = '<div class="image-preview-placeholder" id="image-preview-placeholder">Preview da imagem</div>';
+        }
+    });
+
+    // Submissão do formulário
+    const postForm = document.getElementById('post-form');
+    const contentHidden = document.getElementById('content-hidden');
+
+    postForm.addEventListener('submit', function(e) {
+        // Copia o conteúdo do Quill para o campo hidden
+        contentHidden.value = quill.root.innerHTML;
+    });
+</script>
+{% endblock %}

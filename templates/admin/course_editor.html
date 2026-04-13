@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}{% if course %}{{ t('course_editor_edit') }}{% else %}{{ t('course_editor_new') }}{% endif %}{% endblock %}
+
+{% block content %}
+<section class="section section--editor">
+    <div class="container">
+        <!-- Cabeçalho -->
+        <header class="editor-header">
+            <h1 class="page-title">{% if course %}{{ t('course_editor_heading_edit') }}{% else %}{{ t('course_editor_heading_new') }}{% endif %}</h1>
+        </header>
+
+        <!-- Formulário -->
+        <form class="editor-form" method="POST" id="course-form">
+            <div class="form-grid">
+                <!-- Título -->
+                <div class="form-group form-group--full">
+                    <label for="title" class="form-label">{{ t('course_editor_title') }}</label>
+                    <input 
+                        type="text" 
+                        id="title" 
+                        name="title" 
+                        class="form-input" 
+                        placeholder="{{ t('course_editor_title_placeholder') }}"
+                        value="{{ course.title | default('') }}"
+                        required
+                    >
+                </div>
+
+                <!-- Thumbnail -->
+                <div class="form-group form-group--full">
+                    <label for="thumbnail" class="form-label">{{ t('course_editor_thumbnail') }}</label>
+                    <input 
+                        type="url" 
+                        id="thumbnail" 
+                        name="thumbnail" 
+                        class="form-input" 
+                        placeholder="{{ t('course_editor_thumbnail_placeholder') }}"
+                        value="{{ course.thumbnail | default('') }}"
+                    >
+                    <div class="image-preview-wrapper" id="image-preview-wrapper">
+                        {% if course.thumbnail %}
+                        <img src="{{ course.thumbnail }}" alt="Preview" class="image-preview" id="image-preview">
+                        {% else %}
+                        <div class="image-preview-placeholder" id="image-preview-placeholder">Preview</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Descrição -->
+                <div class="form-group form-group--full">
+                    <label for="description" class="form-label">{{ t('course_editor_description') }}</label>
+                    <textarea 
+                        id="description" 
+                        name="description" 
+                        class="form-textarea" 
+                        placeholder="{{ t('course_editor_description_placeholder') }}"
+                        rows="4"
+                        required
+                    >{{ course.description | default('') }}</textarea>
+                </div>
+
+                <!-- Destaques (o que vai aprender) -->
+                <div class="form-group form-group--full">
+                    <label for="highlights" class="form-label">{{ t('course_editor_highlights') }}</label>
+                    <textarea 
+                        id="highlights" 
+                        name="highlights" 
+                        class="form-textarea" 
+                        placeholder="{{ t('course_editor_highlight_placeholder') }}"
+                        rows="6"
+                    >{{ course.highlights | default([]) | join('\n') }}</textarea>
+                    <span class="form-hint">{{ t('course_editor_highlight_placeholder') }}</span>
+                </div>
+            </div>
+
+            <!-- Toggle de publicação -->
+            <div class="publish-toggle">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="published" id="published" {% if course.published | default(true) %}checked{% endif %}>
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">{{ t('post_editor_published') }}</span>
+            </div>
+
+            <!-- Ações -->
+            <div class="form-actions">
+                <a href="/admin" class="btn btn-ghost">{{ t('cancel') }}</a>
+                <button type="submit" class="btn btn-primary">{{ t('course_editor_btn_save') }}</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}
+
+{% block head %}
+<style>
+    /* Seção do editor */
+    .section--editor {
+        padding: var(--space-12) 0 var(--space-20);
+        background: var(--color-bg);
+        min-height: calc(100vh - 200px);
+    }
+
+    /* Cabeçalho */
+    .editor-header {
+        margin-bottom: var(--space-8);
+    }
+
+    .page-title {
+        font-family: var(--font-display);
+        font-size: var(--text-2xl);
+        color: var(--color-text);
+    }
+
+    /* Formulário */
+    .editor-form {
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border);
+        padding: var(--space-6);
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-4);
+        margin-bottom: var(--space-6);
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
+    .form-group--full {
+        grid-column: 1 / -1;
+    }
+
+    .form-label {
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--color-text-muted);
+    }
+
+    .form-input,
+    .form-textarea {
+        padding: var(--space-3) var(--space-4);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        background: var(--color-surface-2);
+        color: var(--color-text);
+        font-size: var(--text-base);
+        transition: border-color var(--transition);
+    }
+
+    .form-input:focus,
+    .form-textarea:focus {
+        border-color: var(--color-primary);
+        outline: none;
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    .form-hint {
+        font-size: var(--text-xs);
+        color: var(--color-text-faint);
+    }
+
+    /* Preview da imagem */
+    .image-preview-wrapper {
+        margin-top: var(--space-3);
+    }
+
+    .image-preview {
+        max-width: 300px;
+        max-height: 200px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--color-border);
+    }
+
+    .image-preview-placeholder {
+        width: 300px;
+        height: 150px;
+        background: var(--color-surface-offset);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-muted);
+        font-size: var(--text-sm);
+    }
+
+    /* Toggle de publicação */
+    .publish-toggle {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        background: var(--color-surface-offset);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--space-6);
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 48px;
+        height: 24px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: var(--color-border);
+        border-radius: var(--radius-full);
+        transition: background var(--transition);
+    }
+
+    .toggle-slider::before {
+        content: '';
+        position: absolute;
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background: white;
+        border-radius: 50%;
+        transition: transform var(--transition);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+        background: var(--color-success);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(24px);
+    }
+
+    .toggle-label {
+        font-weight: 500;
+        color: var(--color-text);
+    }
+
+    /* Ações do formulário */
+    .form-actions {
+        display: flex;
+        gap: var(--space-3);
+        justify-content: flex-end;
+    }
+
+    /* Responsivo */
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .form-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Preview da imagem do curso
+    const thumbnailInput = document.getElementById('thumbnail');
+    const imagePreviewWrapper = document.getElementById('image-preview-wrapper');
+
+    thumbnailInput.addEventListener('blur', function() {
+        const url = this.value.trim();
+        
+        if (url) {
+            imagePreviewWrapper.innerHTML = `<img src="${url}" alt="Preview" class="image-preview" id="image-preview" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'image-preview-placeholder\\'>Erro ao carregar imagem</div>';">`;
+        } else {
+            imagePreviewWrapper.innerHTML = '<div class="image-preview-placeholder" id="image-preview-placeholder">Preview da imagem</div>';
+        }
+    });
+</script>
+{% endblock %}

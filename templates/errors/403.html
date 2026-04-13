@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('error_403_title') }}{% endblock %}
+
+{% block content %}
+<section class="section section--error">
+    <div class="container">
+        <div class="error-content">
+            <div class="error-code">403</div>
+            <h1 class="error-title">{{ t('error_403_heading') }}</h1>
+            <p class="error-message">{{ t('error_403_text') }}</p>
+            <a href="/" class="btn btn-primary">{{ t('error_back_home') }}</a>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block head %}
+<style>
+    .section--error {
+        padding: var(--space-20) 0;
+        background: var(--color-bg);
+        min-height: calc(100vh - 200px);
+        display: flex;
+        align-items: center;
+        text-align: center;
+    }
+
+    .error-content {
+        max-width: 480px;
+        margin: 0 auto;
+    }
+
+    .error-code {
+        font-family: var(--font-display);
+        font-size: clamp(6rem, 15vw, 10rem);
+        font-weight: 700;
+        color: var(--color-error);
+        line-height: 1;
+        margin-bottom: var(--space-4);
+    }
+
+    .error-title {
+        font-family: var(--font-display);
+        font-size: var(--text-2xl);
+        color: var(--color-text);
+        margin-bottom: var(--space-3);
+    }
+
+    .error-message {
+        color: var(--color-text-muted);
+        margin-bottom: var(--space-6);
+    }
+</style>
+{% endblock %}
