@@ -1,0 +1,231 @@
+{% extends "ferramentas/tool_base.html" %}
+
+{% block tool_content %}
+<div class="tool-layout">
+    <div class="tool-panel">
+        <h3 class="tool-panel__title">{{ t('tools_inputs') }}</h3>
+        <div class="tool-field">
+            <label class="tool-field__label">Tipo de Teste</label>
+            <select id="test-type">
+                <option value="z">Z-test (σ conhecido)</option>
+                <option value="t">t-test (σ desconhecido)</option>
+            </select>
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Hipótese</label>
+            <select id="alt">
+                <option value="two">Bilateral (H₁: μ ≠ μ₀)</option>
+                <option value="right">Unilateral Direita (H₁: μ > μ₀)</option>
+                <option value="left">Unilateral Esquerda (H₁: μ < μ₀)</option>
+            </select>
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Média Amostral (x̄) <span class="tool-field__value" id="xbar-val">52</span></label>
+            <input type="number" id="xbar" value="52" step="0.1">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Média sob H₀ (μ₀) <span class="tool-field__value" id="mu0-val">50</span></label>
+            <input type="number" id="mu0" value="50" step="0.1">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Desvio Padrão (s ou σ) <span class="tool-field__value" id="sd-val">5</span></label>
+            <input type="number" id="sd" value="5" step="0.1" min="0.1">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Tamanho da Amostra (n) <span class="tool-field__value" id="n-val">30</span></label>
+            <input type="number" id="n" value="30" step="1" min="2">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Nível de Significância (α) <span class="tool-field__value" id="alpha-val">0.05</span></label>
+            <input type="range" id="alpha" min="0.01" max="0.20" step="0.01" value="0.05">
+        </div>
+        <div class="tool-actions">
+            <button class="btn btn-gold" onclick="calculate()">{{ t('tools_calculate') }}</button>
+            <button class="btn btn-ghost" onclick="resetInputs()">{{ t('tools_reset') }}</button>
+        </div>
+    </div>
+
+    <div class="tool-output">
+        <div class="tool-results-grid">
+            <div class="tool-result">
+                <div class="tool-result__label">Estatística de Teste</div>
+                <div class="tool-result__value" id="res-stat">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">p-value</div>
+                <div class="tool-result__value" id="res-pval">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Valor Crítico</div>
+                <div class="tool-result__value" id="res-crit">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Decisão</div>
+                <div class="tool-result__value" id="res-decision" style="font-size:var(--text-sm)">—</div>
+            </div>
+        </div>
+
+        <div class="tool-chart-card">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div class="tool-formula-section">
+            <h3 class="tool-formula-section__title">{{ t('tools_formula') }}</h3>
+            <div class="formula-block">
+                Z = (x̄ − μ₀) / (σ / √n)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;t = (x̄ − μ₀) / (s / √n)
+            </div>
+            <div class="tool-explanation">
+                <p>O <strong>teste de hipótese</strong> avalia se uma diferença observada é estatisticamente significativa.
+                O <strong>z-test</strong> é usado quando σ é conhecido; o <strong>t-test</strong> quando usamos s (desvio amostral).</p>
+                <ul>
+                    <li><strong>x̄ (x-barra)</strong> — média calculada na sua amostra. Exemplo: nota média de 52 pontos em um teste aplicado a 30 alunos.</li>
+                    <li><strong>μ₀ (mu-zero)</strong> — média que você assume como verdadeira sob a hipótese nula (H₀). Exemplo: a média histórica da turma é 50.</li>
+                    <li><strong>σ</strong> — desvio padrão da população (usado no z-test quando conhecido). Exemplo: sabe-se que o desvio padrão histórico é 5.</li>
+                    <li><strong>s</strong> — desvio padrão calculado apenas da amostra (usado no t-test quando não conhecemos a população).</li>
+                    <li><strong>n</strong> — tamanho da amostra. Exemplo: 30 alunos.</li>
+                    <li><strong>√n</strong> — raiz quadrada de n. Aparece no denominador porque quanto maior a amostra, mais precisa é a média.</li>
+                    <li><strong>H₀</strong> — hipótese nula: a afirmação inicial que testamos (ex: μ = 50).</li>
+                    <li><strong>H₁</strong> — hipótese alternativa: a afirmação que aceitamos se os dados contradizem H₀.</li>
+                    <li><strong>α</strong> — nível de significância: probabilidade máxima de errar ao rejeitar H₀. Exemplo: α = 0,05 = 5%.</li>
+                    <li><strong>p-value</strong> — probabilidade de observar uma diferença tão grande quanto a encontrada, assumindo que H₀ é verdadeira. Se p-value < α, a diferença é significativa.</li>
+                </ul>
+                <p>Se <strong>p-value < α</strong>, rejeitamos H₀. A região sombreada no gráfico mostra a região de rejeição.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    function erf(x){const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;const s=x<0?-1:1;x=Math.abs(x);const t=1/(1+p*x);const y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);return s*y;}
+    function normCDF(x){return 0.5*(1+erf(x/Math.sqrt(2)));}
+    function normPDF(x){return Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI);}
+
+    // Simple t-distribution CDF approximation via normal for large df
+    function tCDF(t,df){
+        if(df>=30) return normCDF(t);
+        // Approximation using regularized incomplete beta function is complex,
+        // use a reasonable normal approximation with correction
+        const g = Math.log(1+t*t/df)*df/2;
+        return normCDF(t*Math.sqrt((df-0.5)/df)*Math.exp(-g/(2*df)+g/2/df));
+    }
+
+    // For visualization, we'll always use the normal PDF shape
+    function tPDF(x,df){
+        if(df>=30) return normPDF(x);
+        const g1=lgamma((df+1)/2), g2=lgamma(df/2);
+        return Math.exp(g1-g2)/(Math.sqrt(df*Math.PI))*Math.pow(1+x*x/df,-(df+1)/2);
+    }
+    function lgamma(x){
+        const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.001208650973866179,-0.000005395239384953];
+        let y=x,tmp=x+5.5;tmp-=(x+0.5)*Math.log(tmp);let ser=1.000000000190015;
+        for(let j=0;j<6;j++) ser+=c[j]/(++y);
+        return -tmp+Math.log(2.5066282746310005*ser/x);
+    }
+
+    // Better t-CDF using numerical integration for small df
+    function tCDFAccurate(t,df) {
+        if(df >= 30) return normCDF(t);
+        // Use Simpson's rule numerical integration
+        const n=2000; const a=-10; const b=t;
+        if(b<=a) return 0;
+        const h=(b-a)/n; let sum=tPDF(a,df)+tPDF(b,df);
+        for(let i=1;i<n;i++) sum+=tPDF(a+i*h,df)*(i%2===0?2:4);
+        let result=sum*h/3;
+        // Add the tail from -inf to -10 (approximately 0 for reasonable df)
+        return Math.max(0,Math.min(1,result));
+    }
+
+    const gold='#C9A84C', red='rgba(224,80,112,0.3)';
+    const textColor=getComputedStyle(document.documentElement).getPropertyValue('--color-text-faint').trim()||'#888';
+    const gridColor=(getComputedStyle(document.documentElement).getPropertyValue('--color-divider').trim()||'#D0D0D0')+'33';
+
+    let chart = new Chart(document.getElementById('chart').getContext('2d'),{
+        type:'line',data:{labels:[],datasets:[
+            {label:'Distribuição',data:[],borderColor:gold,borderWidth:2,pointRadius:0,fill:false,tension:0.4},
+            {label:'Região de Rejeição',data:[],borderColor:'transparent',backgroundColor:red,pointRadius:0,fill:true,tension:0.4}
+        ]},
+        options:{responsive:true,maintainAspectRatio:true,animation:{duration:200},
+        plugins:{legend:{labels:{color:textColor,font:{size:11}}}},
+        scales:{
+            x:{title:{display:true,text:'Estatística',color:textColor},ticks:{color:textColor,font:{size:10},maxTicksLimit:12},grid:{color:gridColor}},
+            y:{title:{display:true,text:'Densidade',color:textColor},ticks:{color:textColor,font:{size:10}},grid:{color:gridColor},beginAtZero:true}
+        }}
+    });
+
+    document.getElementById('alpha').addEventListener('input',function(){document.getElementById('alpha-val').textContent=this.value;});
+
+    window.calculate = function() {
+        const type=document.getElementById('test-type').value;
+        const alt=document.getElementById('alt').value;
+        const xbar=parseFloat(document.getElementById('xbar').value);
+        const mu0=parseFloat(document.getElementById('mu0').value);
+        const sd=parseFloat(document.getElementById('sd').value);
+        const n=parseInt(document.getElementById('n').value);
+        const alpha=parseFloat(document.getElementById('alpha').value);
+        const df=n-1;
+
+        const se=sd/Math.sqrt(n);
+        const stat=(xbar-mu0)/se;
+
+        let pval, critVal;
+        const usePDF = type==='z' ? normPDF : (x)=>tPDF(x,df);
+        const useCDF = type==='z' ? normCDF : (x)=>tCDFAccurate(x,df);
+
+        if(alt==='two'){
+            pval=2*(1-useCDF(Math.abs(stat)));
+            // Approximate critical value via inverse normal
+            critVal=type==='z'?1.96:critFromAlpha(alpha/2,df);
+        } else if(alt==='right'){
+            pval=1-useCDF(stat);
+            critVal=type==='z'?critFromAlpha(alpha,1e6):critFromAlpha(alpha,df);
+        } else {
+            pval=useCDF(stat);
+            critVal=type==='z'?-critFromAlpha(alpha,1e6):-critFromAlpha(alpha,df);
+        }
+
+        function critFromAlpha(a,d){
+            // Approximate quantile using bisection
+            let lo=0,hi=5;
+            for(let i=0;i<50;i++){const mid=(lo+hi)/2;if(1-(d>1e5?normCDF(mid):tCDFAccurate(mid,d))>a)lo=mid;else hi=mid;}
+            return (lo+hi)/2;
+        }
+
+        const reject=pval<alpha;
+        document.getElementById('res-stat').textContent=stat.toFixed(4);
+        document.getElementById('res-pval').textContent=pval.toFixed(6);
+        document.getElementById('res-crit').textContent=(alt==='two'?'±':'')+Math.abs(critVal).toFixed(4);
+        document.getElementById('res-decision').textContent=reject?'Rejeitar H₀':'Não Rejeitar H₀';
+        document.getElementById('res-decision').style.color=reject?'#E05070':gold;
+
+        // Chart
+        const labels=[],pdfData=[],rejectData=[];
+        const crit=Math.abs(alt==='two'?critVal:critVal);
+        for(let x=-4;x<=4;x+=0.04){
+            labels.push(x.toFixed(2));
+            const y=usePDF(x);
+            pdfData.push(y);
+            if(alt==='two') rejectData.push(Math.abs(x)>=crit?y:0);
+            else if(alt==='right') rejectData.push(x>=crit?y:0);
+            else rejectData.push(x<=-crit?y:0);
+        }
+        chart.data.labels=labels;
+        chart.data.datasets[0].data=pdfData;
+        chart.data.datasets[1].data=rejectData;
+        chart.update();
+    };
+
+    window.resetInputs = function(){
+        document.getElementById('test-type').value='z';document.getElementById('alt').value='two';
+        document.getElementById('xbar').value=52;document.getElementById('mu0').value=50;
+        document.getElementById('sd').value=5;document.getElementById('n').value=30;document.getElementById('alpha').value=0.05;
+        document.getElementById('alpha-val').textContent='0.05';
+        calculate();
+    };
+
+    calculate();
+})();
+</script>
+{% endblock %}

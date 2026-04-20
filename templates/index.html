@@ -190,6 +190,15 @@
 <!-- Seção CTA -->
 <section class="section section--cta">
     <div class="container container--narrow">
+        <!-- Decoration symbols -->
+        <div class="cta-decoration" aria-hidden="true">
+            <span class="float-symbol float-symbol--1">∑</span>
+            <span class="float-symbol float-symbol--2">σ²</span>
+            <span class="float-symbol float-symbol--3">∫</span>
+            <span class="float-symbol float-symbol--4">μ</span>
+            <span class="float-symbol float-symbol--5">Δ</span>
+            <span class="float-symbol float-symbol--6">π</span>
+        </div>
         <div class="cta-content">
             <h2 class="cta-title">Crie sua conta para acessar os materiais, é de graça</h2>
             <div class="cta-actions">
@@ -343,7 +352,79 @@
     .section--cta {
         background: var(--color-surface);
         text-align: center;
-        padding: var(--space-20) 0;
+        padding: var(--space-24) 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* CTA Decoration Symbols */
+    .cta-decoration {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    .float-symbol {
+        position: absolute;
+        font-family: var(--font-mono);
+        color: var(--color-gold);
+        opacity: 0.12;
+        font-size: 2rem;
+        animation: floatSymbol 8s ease-in-out infinite;
+    }
+
+    .float-symbol--1 {
+        top: 15%;
+        left: 10%;
+        animation-delay: 0s;
+        font-size: 2.5rem;
+    }
+
+    .float-symbol--2 {
+        top: 25%;
+        right: 15%;
+        animation-delay: 1.2s;
+        font-size: 1.8rem;
+    }
+
+    .float-symbol--3 {
+        bottom: 20%;
+        left: 15%;
+        animation-delay: 2.5s;
+        font-size: 3rem;
+    }
+
+    .float-symbol--4 {
+        top: 15%;
+        right: 35%;
+        animation-delay: 0.8s;
+        font-size: 1.5rem;
+    }
+
+    .float-symbol--5 {
+        bottom: 30%;
+        right: 12%;
+        animation-delay: 3s;
+        font-size: 2.2rem;
+    }
+
+    .float-symbol--6 {
+        bottom: 15%;
+        left: 35%;
+        animation-delay: 1.8s;
+        font-size: 1.6rem;
+    }
+
+    @keyframes floatSymbol {
+
+        0%,
+        100% {
+            transform: translateY(0) rotate(0deg);
+        }
+
+        50% {
+            transform: translateY(-12px) rotate(5deg);
+        }
     }
 
     .section-header {

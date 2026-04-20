@@ -1,0 +1,197 @@
+{% extends "ferramentas/tool_base.html" %}
+
+{% block tool_content %}
+<div class="tool-layout">
+    <div class="tool-panel">
+        <h3 class="tool-panel__title">{{ t('tools_inputs') }}</h3>
+        <div class="tool-field">
+            <label class="tool-field__label">Preço do Ativo (S) <span class="tool-field__value" id="s-val">100</span></label>
+            <input type="range" id="S" min="10" max="300" step="1" value="100">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Strike (K) <span class="tool-field__value" id="k-val">100</span></label>
+            <input type="range" id="K" min="10" max="300" step="1" value="100">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Tempo até Vencimento (T anos) <span class="tool-field__value" id="t-val">1.0</span></label>
+            <input type="range" id="T" min="0.05" max="3" step="0.05" value="1">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Taxa Livre de Risco (r) <span class="tool-field__value" id="r-val">0.05</span></label>
+            <input type="range" id="r" min="0" max="0.15" step="0.005" value="0.05">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Volatilidade (σ) <span class="tool-field__value" id="sig-val">0.20</span></label>
+            <input type="range" id="sigma" min="0.05" max="0.80" step="0.01" value="0.20">
+        </div>
+        <div class="tool-actions">
+            <button class="btn btn-gold" onclick="calculate()">{{ t('tools_calculate') }}</button>
+            <button class="btn btn-ghost" onclick="resetInputs()">{{ t('tools_reset') }}</button>
+        </div>
+    </div>
+
+    <div class="tool-output">
+        <div class="tool-results-grid">
+            <div class="tool-result">
+                <div class="tool-result__label">Call Price</div>
+                <div class="tool-result__value" id="res-call">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Put Price</div>
+                <div class="tool-result__value" id="res-put">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Delta (Δ) Call</div>
+                <div class="tool-result__value" id="res-delta">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Gamma (Γ)</div>
+                <div class="tool-result__value" id="res-gamma">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Theta (Θ) Call</div>
+                <div class="tool-result__value" id="res-theta">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Vega (ν)</div>
+                <div class="tool-result__value" id="res-vega">—</div>
+            </div>
+        </div>
+
+        <div class="tool-chart-card">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div class="tool-formula-section">
+            <h3 class="tool-formula-section__title">{{ t('tools_formula') }}</h3>
+            <div class="formula-block">
+                C = S₀N(d₁) − Ke<sup>−rT</sup>N(d₂)<br>
+                P = Ke<sup>−rT</sup>N(−d₂) − S₀N(−d₁)<br><br>
+                d₁ = [ln(S₀/K) + (r + σ²/2)T] / (σ√T)<br>
+                d₂ = d₁ − σ√T
+            </div>
+            <div class="tool-explanation">
+                <p>O modelo <strong>Black-Scholes</strong> precifica opções europeias assumindo que os preços seguem
+                um Movimento Browniano Geométrico (GBM) com volatilidade constante.</p>
+                <ul>
+                    <li><strong>C</strong> — preço teórico de uma opção de compra (call).</li>
+                    <li><strong>P</strong> — preço teórico de uma opção de venda (put).</li>
+                    <li><strong>S₀</strong> — preço atual do ativo subjacente. Exemplo: uma ação cotada a R$ 100.</li>
+                    <li><strong>K</strong> — preço de exercício (strike). Exemplo: R$ 100 é o valor acertado para a troca futura.</li>
+                    <li><strong>r</strong> — taxa de juros livre de risco anual. Exemplo: 5% ao ano = 0,05.</li>
+                    <li><strong>T</strong> — tempo até o vencimento, em anos. Exemplo: 1 ano.</li>
+                    <li><strong>σ</strong> — volatilidade anual do ativo. Exemplo: 20% = 0,20.</li>
+                    <li><strong>N(·)</strong> — função de distribuição acumulada normal: diz a probabilidade de um evento ocorrer.</li>
+                    <li><strong>d₁, d₂</strong> — fatores que traduzem a relação entre preço do ativo, strike, volatilidade e tempo.</li>
+                    <li><strong>e</strong> — base do logaritmo natural (~2,718). O termo e<sup>−rT</sup> desconta o strike para o valor presente.</li>
+                </ul>
+                <p>As <strong>Greeks</strong> medem a sensibilidade do preço da opção a cada variável: Delta (preço), Gamma (aceleração), Theta (tempo) e Vega (volatilidade).</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    function erf(x) {
+        const a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+        const sign = x < 0 ? -1 : 1;
+        x = Math.abs(x);
+        const t = 1.0/(1.0+p*x);
+        const y = 1.0-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+        return sign*y;
+    }
+    function normCDF(x) { return 0.5*(1+erf(x/Math.sqrt(2))); }
+    function normPDF(x) { return Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI); }
+
+    function bs(S,K,T,r,sig) {
+        const d1 = (Math.log(S/K)+(r+0.5*sig*sig)*T)/(sig*Math.sqrt(T));
+        const d2 = d1 - sig*Math.sqrt(T);
+        const call = S*normCDF(d1) - K*Math.exp(-r*T)*normCDF(d2);
+        const put = K*Math.exp(-r*T)*normCDF(-d2) - S*normCDF(-d1);
+        const delta = normCDF(d1);
+        const gamma = normPDF(d1)/(S*sig*Math.sqrt(T));
+        const theta = -(S*normPDF(d1)*sig)/(2*Math.sqrt(T)) - r*K*Math.exp(-r*T)*normCDF(d2);
+        const vega = S*normPDF(d1)*Math.sqrt(T);
+        return { call, put, delta, gamma, theta: theta/365, vega: vega/100, d1, d2 };
+    }
+
+    const ctx = document.getElementById('chart').getContext('2d');
+    const gold = '#C9A84C';
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text-faint').trim()||'#888';
+    const gridColor = (getComputedStyle(document.documentElement).getPropertyValue('--color-divider').trim()||'#D0D0D0')+'33';
+
+    let chart = new Chart(ctx, {
+        type:'line',
+        data: { labels:[], datasets:[
+            { label:'Call', data:[], borderColor:gold, borderWidth:2.5, pointRadius:0, fill:false, tension:0.3 },
+            { label:'Put', data:[], borderColor:'rgba(224,80,112,0.8)', borderWidth:2, pointRadius:0, fill:false, tension:0.3 },
+            { label:'Payoff Call', data:[], borderColor:gold, borderWidth:1, borderDash:[5,5], pointRadius:0, fill:false },
+            { label:'Payoff Put', data:[], borderColor:'rgba(224,80,112,0.5)', borderWidth:1, borderDash:[5,5], pointRadius:0, fill:false }
+        ]},
+        options: {
+            responsive:true, maintainAspectRatio:true, animation:{duration:200},
+            plugins:{ legend:{ labels:{ color:textColor, font:{family:'Inter',size:11} } } },
+            scales:{
+                x:{ title:{display:true,text:'Preço do Ativo (S)',color:textColor}, ticks:{color:textColor,font:{size:10},maxTicksLimit:10}, grid:{color:gridColor} },
+                y:{ title:{display:true,text:'Valor da Opção',color:textColor}, ticks:{color:textColor,font:{family:'JetBrains Mono',size:10}}, grid:{color:gridColor} }
+            }
+        }
+    });
+
+    ['S','K','T','r','sigma'].forEach(id => {
+        document.getElementById(id).addEventListener('input', function() {
+            const valId = id === 'sigma' ? 'sig-val' : (id.toLowerCase() + '-val');
+            document.getElementById(valId).textContent = this.value;
+        });
+    });
+
+    window.calculate = function() {
+        const S=parseFloat(document.getElementById('S').value);
+        const K=parseFloat(document.getElementById('K').value);
+        const T=parseFloat(document.getElementById('T').value);
+        const r=parseFloat(document.getElementById('r').value);
+        const sig=parseFloat(document.getElementById('sigma').value);
+
+        const res = bs(S,K,T,r,sig);
+        document.getElementById('res-call').textContent = res.call.toFixed(4);
+        document.getElementById('res-put').textContent = res.put.toFixed(4);
+        document.getElementById('res-delta').textContent = res.delta.toFixed(4);
+        document.getElementById('res-gamma').textContent = res.gamma.toFixed(6);
+        document.getElementById('res-theta').textContent = res.theta.toFixed(4);
+        document.getElementById('res-vega').textContent = res.vega.toFixed(4);
+
+        // Chart: option value vs underlying price
+        const labels=[], callData=[], putData=[], payoffCall=[], payoffPut=[];
+        for(let s=K*0.3; s<=K*1.8; s+=K*0.02) {
+            labels.push(s.toFixed(0));
+            const v = bs(s,K,T,r,sig);
+            callData.push(v.call);
+            putData.push(v.put);
+            payoffCall.push(Math.max(s-K,0));
+            payoffPut.push(Math.max(K-s,0));
+        }
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = callData;
+        chart.data.datasets[1].data = putData;
+        chart.data.datasets[2].data = payoffCall;
+        chart.data.datasets[3].data = payoffPut;
+        chart.update();
+    };
+
+    window.resetInputs = function() {
+        document.getElementById('S').value=100; document.getElementById('K').value=100;
+        document.getElementById('T').value=1; document.getElementById('r').value=0.05;
+        document.getElementById('sigma').value=0.20;
+        ['s','k','t','r','sig'].forEach((v,i) => {
+            document.getElementById(v+'-val').textContent = [100,100,'1.0','0.05','0.20'][i];
+        });
+        calculate();
+    };
+
+    calculate();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,180 @@
+{% extends "ferramentas/tool_base.html" %}
+
+{% block tool_content %}
+<div class="tool-layout">
+    <div class="tool-panel">
+        <h3 class="tool-panel__title">{{ t('tools_inputs') }}</h3>
+        <div class="tool-field">
+            <label class="tool-field__label">Prior α <span class="tool-field__value" id="pa-val">2</span></label>
+            <input type="range" id="pa" min="0.5" max="20" step="0.5" value="2">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Prior β <span class="tool-field__value" id="pb-val">5</span></label>
+            <input type="range" id="pb" min="0.5" max="20" step="0.5" value="5">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Sucessos (k) <span class="tool-field__value" id="k-val">3</span></label>
+            <input type="range" id="k" min="0" max="50" step="1" value="3">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Tentativas (n) <span class="tool-field__value" id="n-val">10</span></label>
+            <input type="range" id="n" min="1" max="100" step="1" value="10">
+        </div>
+        <div class="tool-actions">
+            <button class="btn btn-gold" onclick="calculate()">{{ t('tools_calculate') }}</button>
+            <button class="btn btn-ghost" onclick="resetInputs()">{{ t('tools_reset') }}</button>
+        </div>
+    </div>
+
+    <div class="tool-output">
+        <div class="tool-results-grid">
+            <div class="tool-result">
+                <div class="tool-result__label">Média Prior</div>
+                <div class="tool-result__value" id="res-prior-mean">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Média Posterior</div>
+                <div class="tool-result__value" id="res-post-mean">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">IC 95% Posterior</div>
+                <div class="tool-result__value" id="res-ci" style="font-size:var(--text-sm)">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Posterior α', β'</div>
+                <div class="tool-result__value" id="res-params" style="font-size:var(--text-sm)">—</div>
+            </div>
+        </div>
+
+        <div class="tool-chart-card">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div class="tool-formula-section">
+            <h3 class="tool-formula-section__title">{{ t('tools_formula') }}</h3>
+            <div class="formula-block">
+                Prior: θ ~ Beta(α, β)<br>
+                Likelihood: X|θ ~ Binomial(n, θ)<br>
+                Posterior: θ|X ~ Beta(α + k, β + n − k)
+            </div>
+            <div class="tool-explanation">
+                <p>A <strong>atualização bayesiana</strong> combina a crença prévia (prior) com dados observados
+                para produzir uma crença atualizada (posterior). O modelo <strong>Beta-Binomial</strong> é
+                o caso conjugado clássico para parâmetros de probabilidade.</p>
+                <ul>
+                    <li><strong>θ (theta)</strong> — a probabilidade desconhecida que queremos estimar. Exemplo: taxa de conversão de um anúncio.</li>
+                    <li><strong>α (alpha)</strong> — parâmetro do prior que representa sucessos "imaginários" anteriores. Exemplo: α = 2 equivale a acreditar que já vimos 2 sucessos antes.</li>
+                    <li><strong>β (beta)</strong> — parâmetro do prior que representa fracassos "imaginários" anteriores. Exemplo: β = 5 equivale a 5 fracassos anteriores.</li>
+                    <li><strong>n</strong> — número total de tentativas observadas. Exemplo: 10 lançamentos de moeda.</li>
+                    <li><strong>k</strong> — número de sucessos observados nessas tentativas. Exemplo: 7 caras.</li>
+                    <li><strong>α', β'</strong> — parâmetros do posterior, calculados como α' = α + k e β' = β + n − k.</li>
+                    <li><strong>X|θ ~ Binomial(n, θ)</strong> — a probabilidade de observar k sucessos em n tentativas, dado que a chance de sucesso é θ.</li>
+                </ul>
+                <p>À medida que mais dados são coletados, o posterior concentra-se em torno da
+                verdadeira probabilidade, tornando-se menos dependente do prior inicial.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    function lgamma(x){
+        const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.001208650973866179,-0.000005395239384953];
+        let y=x,tmp=x+5.5;tmp-=(x+0.5)*Math.log(tmp);let ser=1.000000000190015;
+        for(let j=0;j<6;j++) ser+=c[j]/(++y);
+        return -tmp+Math.log(2.5066282746310005*ser/x);
+    }
+
+    function betaPDF(x,a,b){
+        if(x<=0||x>=1) return 0;
+        const logB=lgamma(a)+lgamma(b)-lgamma(a+b);
+        return Math.exp((a-1)*Math.log(x)+(b-1)*Math.log(1-x)-logB);
+    }
+
+    function betaQuantile(p,a,b){
+        // Bisection
+        let lo=0,hi=1;
+        for(let i=0;i<60;i++){
+            const mid=(lo+hi)/2;
+            if(betaCDF(mid,a,b)<p) lo=mid; else hi=mid;
+        }
+        return (lo+hi)/2;
+    }
+
+    function betaCDF(x,a,b){
+        // Numerical integration (Simpson)
+        if(x<=0) return 0; if(x>=1) return 1;
+        const n=500; const h=x/n;
+        let sum=betaPDF(0.0001,a,b)+betaPDF(x,a,b);
+        for(let i=1;i<n;i++) sum+=betaPDF(i*h,a,b)*(i%2===0?2:4);
+        return Math.min(1,Math.max(0,sum*h/3));
+    }
+
+    const gold='#C9A84C', navy='#1B3A5C';
+    const textColor=getComputedStyle(document.documentElement).getPropertyValue('--color-text-faint').trim()||'#888';
+    const gridColor=(getComputedStyle(document.documentElement).getPropertyValue('--color-divider').trim()||'#D0D0D0')+'33';
+
+    let chart = new Chart(document.getElementById('chart').getContext('2d'),{
+        type:'line',data:{labels:[],datasets:[
+            {label:'Prior Beta(α,β)',data:[],borderColor:navy,borderWidth:2,borderDash:[5,5],pointRadius:0,fill:false,tension:0.3},
+            {label:'Posterior Beta(α\',β\')',data:[],borderColor:gold,borderWidth:2.5,pointRadius:0,fill:true,backgroundColor:'rgba(201,168,76,0.1)',tension:0.3}
+        ]},
+        options:{responsive:true,maintainAspectRatio:true,animation:{duration:200},
+        plugins:{legend:{labels:{color:textColor,font:{family:'Inter',size:11}}}},
+        scales:{
+            x:{title:{display:true,text:'θ (probabilidade)',color:textColor},ticks:{color:textColor,font:{size:10},maxTicksLimit:10},grid:{color:gridColor}},
+            y:{title:{display:true,text:'Densidade',color:textColor},ticks:{color:textColor,font:{size:10}},grid:{color:gridColor},beginAtZero:true}
+        }}
+    });
+
+    ['pa','pb','k','n'].forEach(id=>{
+        document.getElementById(id).addEventListener('input',function(){
+            document.getElementById(id+'-val').textContent=this.value;
+        });
+    });
+
+    window.calculate = function() {
+        const a=parseFloat(document.getElementById('pa').value);
+        const b=parseFloat(document.getElementById('pb').value);
+        const k=parseInt(document.getElementById('k').value);
+        const n=parseInt(document.getElementById('n').value);
+
+        const postA=a+k, postB=b+(n-k);
+        const priorMean=a/(a+b);
+        const postMean=postA/(postA+postB);
+
+        // CI
+        const lo=betaQuantile(0.025,postA,postB);
+        const hi=betaQuantile(0.975,postA,postB);
+
+        document.getElementById('res-prior-mean').textContent=priorMean.toFixed(4);
+        document.getElementById('res-post-mean').textContent=postMean.toFixed(4);
+        document.getElementById('res-ci').textContent='['+lo.toFixed(3)+', '+hi.toFixed(3)+']';
+        document.getElementById('res-params').textContent=postA.toFixed(1)+', '+postB.toFixed(1);
+
+        const labels=[],priorData=[],postData=[];
+        for(let x=0.005;x<=0.995;x+=0.005){
+            labels.push(x.toFixed(3));
+            priorData.push(betaPDF(x,a,b));
+            postData.push(betaPDF(x,postA,postB));
+        }
+        chart.data.labels=labels;
+        chart.data.datasets[0].data=priorData;
+        chart.data.datasets[1].data=postData;
+        chart.update();
+    };
+
+    window.resetInputs = function(){
+        document.getElementById('pa').value=2;document.getElementById('pb').value=5;
+        document.getElementById('k').value=3;document.getElementById('n').value=10;
+        ['pa','pb','k','n'].forEach(id=>document.getElementById(id+'-val').textContent=document.getElementById(id).value);
+        calculate();
+    };
+
+    calculate();
+})();
+</script>
+{% endblock %}

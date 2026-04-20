@@ -1,0 +1,220 @@
+{% extends "ferramentas/tool_base.html" %}
+
+{% block tool_content %}
+<div class="tool-layout">
+    <!-- Input Panel -->
+    <div class="tool-panel">
+        <h3 class="tool-panel__title">{{ t('tools_inputs') }}</h3>
+        <div class="tool-field">
+            <label class="tool-field__label">Média (μ) <span class="tool-field__value" id="mu-val">0</span></label>
+            <input type="range" id="mu" min="-5" max="5" step="0.1" value="0">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Desvio Padrão (σ) <span class="tool-field__value" id="sigma-val">1</span></label>
+            <input type="range" id="sigma" min="0.1" max="3" step="0.1" value="1">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Valor X <span class="tool-field__value" id="x-val">0</span></label>
+            <input type="range" id="x-input" min="-6" max="6" step="0.1" value="0">
+        </div>
+        <div class="tool-actions">
+            <button class="btn btn-gold" id="calc-btn" onclick="calculate()">{{ t('tools_calculate') }}</button>
+            <button class="btn btn-ghost" onclick="resetInputs()">{{ t('tools_reset') }}</button>
+        </div>
+    </div>
+
+    <!-- Output -->
+    <div class="tool-output">
+        <!-- Results -->
+        <div class="tool-results-grid">
+            <div class="tool-result">
+                <div class="tool-result__label">PDF f(x)</div>
+                <div class="tool-result__value" id="res-pdf">0.3989</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">CDF Φ(x)</div>
+                <div class="tool-result__value" id="res-cdf">0.5000</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Z-Score</div>
+                <div class="tool-result__value" id="res-z">0.0000</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">P(X ≤ x)</div>
+                <div class="tool-result__value" id="res-prob">50.00%</div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="tool-chart-card">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <!-- Formula -->
+        <div class="tool-formula-section">
+            <h3 class="tool-formula-section__title">{{ t('tools_formula') }}</h3>
+            <div class="formula-block">
+                f(x) = (1 / σ√2π) × e<sup>−(x−μ)² / 2σ²</sup>
+            </div>
+            <div class="tool-explanation">
+                <p>A <strong>distribuição normal</strong> (gaussiana) é a distribuição de probabilidade mais
+                importante em estatística e finanças. É definida por dois parâmetros: a média μ (centro)
+                e o desvio padrão σ (dispersão).</p>
+                <ul>
+                    <li><strong>μ (mu)</strong> — média: o ponto central da curva. Exemplo: se μ = 0, a curva é centrada em zero.</li>
+                    <li><strong>σ (sigma)</strong> — desvio padrão: mede a largura da curva. Quanto maior o σ, mais "achatada" a curva. Exemplo: σ = 1 é o padrão.</li>
+                    <li><strong>x</strong> — valor que queremos analisar na distribuição.</li>
+                    <li><strong>f(x)</strong> — altura da curva naquele ponto (não é probabilidade direta, mas densidade).</li>
+                    <li><strong>π</strong> — número pi (~3,14159), usado para normalizar a área total da curva em 1.</li>
+                    <li><strong>e</strong> — base do logaritmo natural (~2,718), responsável pelo formato de sino da curva.</li>
+                </ul>
+                <p>O <strong>Z-score</strong> padroniza qualquer valor: Z = (X − μ) / σ. A <strong>CDF</strong>
+                Φ(x) fornece a probabilidade acumulada P(X ≤ x).</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // Math helpers
+    function normalPDF(x, mu, sigma) {
+        const coeff = 1 / (sigma * Math.sqrt(2 * Math.PI));
+        const exponent = -0.5 * Math.pow((x - mu) / sigma, 2);
+        return coeff * Math.exp(exponent);
+    }
+
+    function erf(x) {
+        const a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429;
+        const p=0.3275911;
+        const sign = x < 0 ? -1 : 1;
+        x = Math.abs(x);
+        const t = 1.0 / (1.0 + p * x);
+        const y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t * Math.exp(-x*x);
+        return sign * y;
+    }
+
+    function normalCDF(x, mu, sigma) {
+        return 0.5 * (1 + erf((x - mu) / (sigma * Math.sqrt(2))));
+    }
+
+    // Chart
+    const ctx = document.getElementById('chart').getContext('2d');
+    const chartColors = {
+        gold: '#C9A84C',
+        goldLight: 'rgba(201, 168, 76, 0.15)',
+        text: getComputedStyle(document.documentElement).getPropertyValue('--color-text-faint').trim() || '#888',
+        grid: getComputedStyle(document.documentElement).getPropertyValue('--color-divider').trim() || '#D0D0D0',
+    };
+
+    let chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'PDF',
+                    data: [],
+                    borderColor: chartColors.gold,
+                    borderWidth: 2.5,
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.4,
+                },
+                {
+                    label: 'Área P(X ≤ x)',
+                    data: [],
+                    borderColor: 'transparent',
+                    backgroundColor: chartColors.goldLight,
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0.4,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            animation: { duration: 300 },
+            plugins: {
+                legend: {
+                    labels: { color: chartColors.text, font: { family: 'Inter', size: 12 } }
+                }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'x', color: chartColors.text, font: { family: 'Inter' } },
+                    ticks: { color: chartColors.text, font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 12 },
+                    grid: { color: chartColors.grid + '33' }
+                },
+                y: {
+                    title: { display: true, text: 'f(x)', color: chartColors.text, font: { family: 'Inter' } },
+                    ticks: { color: chartColors.text, font: { family: 'JetBrains Mono', size: 10 } },
+                    grid: { color: chartColors.grid + '33' },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Bind sliders
+    const muSlider = document.getElementById('mu');
+    const sigmaSlider = document.getElementById('sigma');
+    const xSlider = document.getElementById('x-input');
+
+    window.calculate = function() {
+        const mu = parseFloat(muSlider.value);
+        const sigma = parseFloat(sigmaSlider.value);
+        const x = parseFloat(xSlider.value);
+
+        document.getElementById('mu-val').textContent = mu.toFixed(1);
+        document.getElementById('sigma-val').textContent = sigma.toFixed(1);
+        document.getElementById('x-val').textContent = x.toFixed(1);
+
+        // Compute results
+        const pdf = normalPDF(x, mu, sigma);
+        const cdf = normalCDF(x, mu, sigma);
+        const z = (x - mu) / sigma;
+
+        document.getElementById('res-pdf').textContent = pdf.toFixed(4);
+        document.getElementById('res-cdf').textContent = cdf.toFixed(4);
+        document.getElementById('res-z').textContent = z.toFixed(4);
+        document.getElementById('res-prob').textContent = (cdf * 100).toFixed(2) + '%';
+
+        // Generate chart data
+        const xMin = mu - 4 * sigma;
+        const xMax = mu + 4 * sigma;
+        const step = (xMax - xMin) / 200;
+        const labels = [];
+        const pdfData = [];
+        const areaData = [];
+
+        for (let xi = xMin; xi <= xMax; xi += step) {
+            labels.push(xi.toFixed(2));
+            const pdfVal = normalPDF(xi, mu, sigma);
+            pdfData.push(pdfVal);
+            areaData.push(xi <= x ? pdfVal : 0);
+        }
+
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = pdfData;
+        chart.data.datasets[1].data = areaData;
+        chart.update();
+    };
+
+    window.resetInputs = function() {
+        muSlider.value = 0;
+        sigmaSlider.value = 1;
+        xSlider.value = 0;
+        calculate();
+    };
+
+    [muSlider, sigmaSlider, xSlider].forEach(s => s.addEventListener('input', calculate));
+
+    // Initial calculation
+    calculate();
+})();
+</script>
+{% endblock %}

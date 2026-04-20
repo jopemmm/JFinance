@@ -70,7 +70,7 @@ def initialize_firebase():
     cred = credentials.Certificate(cred_dict)
     firebase_admin.initialize_app(cred)
 
-    print("✅ Firebase Admin SDK inicializado com sucesso!")
+    print("Firebase Admin SDK inicializado com sucesso!")
 
     return firestore.client(), auth
 

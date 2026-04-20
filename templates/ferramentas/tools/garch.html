@@ -1,0 +1,164 @@
+{% extends "ferramentas/tool_base.html" %}
+
+{% block tool_content %}
+<div class="tool-layout">
+    <div class="tool-panel">
+        <h3 class="tool-panel__title">{{ t('tools_inputs') }}</h3>
+        <div class="tool-field">
+            <label class="tool-field__label">ω (omega) <span class="tool-field__value" id="omega-val">0.00001</span></label>
+            <input type="range" id="omega" min="0.000001" max="0.0001" step="0.000001" value="0.00001">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">α (alpha) <span class="tool-field__value" id="alpha-val">0.10</span></label>
+            <input type="range" id="alpha" min="0.01" max="0.30" step="0.01" value="0.10">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">β (beta) <span class="tool-field__value" id="beta-val">0.85</span></label>
+            <input type="range" id="beta" min="0.50" max="0.95" step="0.01" value="0.85">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Nº Observações <span class="tool-field__value" id="nobs-val">500</span></label>
+            <input type="range" id="nobs" min="100" max="1000" step="50" value="500">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Volatilidade Inicial (%) <span class="tool-field__value" id="vol0-val">1.5</span></label>
+            <input type="range" id="vol0" min="0.5" max="5" step="0.1" value="1.5">
+        </div>
+        <div class="tool-actions">
+            <button class="btn btn-gold" onclick="simulate()">Simular</button>
+            <button class="btn btn-ghost" onclick="resetInputs()">{{ t('tools_reset') }}</button>
+        </div>
+    </div>
+
+    <div class="tool-output">
+        <div class="tool-results-grid">
+            <div class="tool-result">
+                <div class="tool-result__label">α + β (Persistência)</div>
+                <div class="tool-result__value" id="res-persist">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Vol. Incondicional (σ)</div>
+                <div class="tool-result__value" id="res-uncond">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Half-Life (dias)</div>
+                <div class="tool-result__value" id="res-halflife">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Vol. Final (%)</div>
+                <div class="tool-result__value" id="res-final">—</div>
+            </div>
+        </div>
+
+        <div class="tool-chart-card">
+            <canvas id="chart-returns"></canvas>
+        </div>
+        <div class="tool-chart-card">
+            <canvas id="chart-vol"></canvas>
+        </div>
+
+        <div class="tool-formula-section">
+            <h3 class="tool-formula-section__title">{{ t('tools_formula') }}</h3>
+            <div class="formula-block">
+                σ²<sub>t</sub> = ω + α × ε²<sub>t−1</sub> + β × σ²<sub>t−1</sub><br>
+                σ²<sub>∞</sub> = ω / (1 − α − β)
+            </div>
+            <div class="tool-explanation">
+                <p>O modelo <strong>GARCH(1,1)</strong> captura a volatilidade condicional que muda ao longo do tempo.
+                É essencial em precificação de derivativos, gestão de risco e previsão de volatilidade.</p>
+                <ul>
+                    <li><strong>σ²t</strong> — variância (volatilidade ao quadrado) no dia t. É o que o modelo tenta prever.</li>
+                    <li><strong>ω (omega)</strong> — volatilidade de longo prazo quando não há choques. Valor pequeno e positivo. Exemplo: 0,00001.</li>
+                    <li><strong>α (alpha)</strong> — reação a choques recentes. Exemplo: se α = 0,10, um grande movimento de ontem aumenta em 10% a volatilidade prevista para hoje.</li>
+                    <li><strong>β (beta)</strong> — persistência da volatilidade passada. Exemplo: se β = 0,85, 85% da volatilidade de ontem continua hoje.</li>
+                    <li><strong>ε²t−1</strong> — quadrado do retorno inesperado de ontem (o "choque"). Retornos maiores que o esperado geram ε² maior.</li>
+                    <li><strong>σ²∞</strong> — volatilidade incondicional (de longo prazo), calculada como ω / (1 − α − β). Só existe se α + β < 1.</li>
+                </ul>
+                <p>A soma <strong>α + β</strong> indica a persistência total: valores próximos de 1 significam que choques demoram muito para sumir.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    function randn() {
+        let u=0,v=0;
+        while(u===0) u=Math.random();
+        while(v===0) v=Math.random();
+        return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+    }
+
+    const gold='#C9A84C';
+    const textColor=getComputedStyle(document.documentElement).getPropertyValue('--color-text-faint').trim()||'#888';
+    const gridColor=(getComputedStyle(document.documentElement).getPropertyValue('--color-divider').trim()||'#D0D0D0')+'33';
+
+    let returnsChart = new Chart(document.getElementById('chart-returns').getContext('2d'), {
+        type:'bar', data:{labels:[],datasets:[{label:'Retornos',data:[],backgroundColor:'rgba(168,196,224,0.4)',borderColor:'rgba(168,196,224,0.6)',borderWidth:1}]},
+        options:{responsive:true,maintainAspectRatio:true,animation:{duration:150},plugins:{legend:{labels:{color:textColor,font:{size:11}}}},
+        scales:{x:{display:false},y:{title:{display:true,text:'Retorno',color:textColor},ticks:{color:textColor,font:{size:10}},grid:{color:gridColor}}}}
+    });
+
+    let volChart = new Chart(document.getElementById('chart-vol').getContext('2d'), {
+        type:'line', data:{labels:[],datasets:[{label:'Volatilidade Condicional (σₜ)',data:[],borderColor:gold,borderWidth:2,pointRadius:0,fill:true,backgroundColor:'rgba(201,168,76,0.1)',tension:0.2}]},
+        options:{responsive:true,maintainAspectRatio:true,animation:{duration:150},plugins:{legend:{labels:{color:textColor,font:{size:11}}}},
+        scales:{x:{title:{display:true,text:'Dia',color:textColor},ticks:{color:textColor,maxTicksLimit:10,font:{size:10}},grid:{color:gridColor}},
+        y:{title:{display:true,text:'σ (% diário)',color:textColor},ticks:{color:textColor,font:{family:'JetBrains Mono',size:10}},grid:{color:gridColor},beginAtZero:true}}}
+    });
+
+    ['omega','alpha','beta','nobs','vol0'].forEach(id=>{
+        document.getElementById(id).addEventListener('input',function(){
+            document.getElementById(id+'-val').textContent=this.value;
+        });
+    });
+
+    window.simulate = function() {
+        const w=parseFloat(document.getElementById('omega').value);
+        const a=parseFloat(document.getElementById('alpha').value);
+        const b=parseFloat(document.getElementById('beta').value);
+        const N=parseInt(document.getElementById('nobs').value);
+        const vol0=parseFloat(document.getElementById('vol0').value)/100;
+
+        const persist=a+b;
+        const uncondVar = persist<1 ? w/(1-persist) : NaN;
+        const uncondVol = !isNaN(uncondVar) ? Math.sqrt(uncondVar)*100 : NaN;
+        const halfLife = persist<1 ? Math.log(0.5)/Math.log(persist) : Infinity;
+
+        let sigma2=vol0*vol0;
+        const returns=[], vols=[], labels=[];
+        for(let i=0;i<N;i++){
+            const z=randn();
+            const eps=Math.sqrt(sigma2)*z;
+            returns.push(eps*100);
+            vols.push(Math.sqrt(sigma2)*100);
+            labels.push(i);
+            sigma2=w+a*eps*eps+b*sigma2;
+        }
+
+        document.getElementById('res-persist').textContent=persist.toFixed(3);
+        document.getElementById('res-uncond').textContent=!isNaN(uncondVol)?uncondVol.toFixed(3)+'%':'∞';
+        document.getElementById('res-halflife').textContent=isFinite(halfLife)?halfLife.toFixed(1):'∞';
+        document.getElementById('res-final').textContent=vols[vols.length-1].toFixed(3)+'%';
+
+        returnsChart.data.labels=labels;
+        returnsChart.data.datasets[0].data=returns;
+        returnsChart.update();
+
+        volChart.data.labels=labels;
+        volChart.data.datasets[0].data=vols;
+        volChart.update();
+    };
+
+    window.resetInputs = function() {
+        document.getElementById('omega').value=0.00001;document.getElementById('alpha').value=0.10;
+        document.getElementById('beta').value=0.85;document.getElementById('nobs').value=500;document.getElementById('vol0').value=1.5;
+        ['omega','alpha','beta','nobs','vol0'].forEach(id=>document.getElementById(id+'-val').textContent=document.getElementById(id).value);
+        simulate();
+    };
+
+    simulate();
+})();
+</script>
+{% endblock %}

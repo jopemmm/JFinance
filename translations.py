@@ -27,6 +27,8 @@ TRANSLATIONS = {
         'footer_all_courses': 'Todos os cursos',
         'footer_about': 'Sobre',
         'footer_homepage': 'Página inicial',
+        'footer_tools': 'Ferramentas',
+        'footer_all_tools': 'Todas as ferramentas',
         'footer_rights': 'Todos os direitos reservados.',
         
         # Home Page
@@ -200,6 +202,26 @@ TRANSLATIONS = {
         'course_editor_btn_save': 'Salvar Aula',
         'course_editor_btn_saving': 'Salvando...',
         
+        # Ferramentas (Tools)
+        'nav_tools': 'Ferramentas',
+        'tools_title': 'Ferramentas — J-Finance',
+        'tools_page_title': 'Ferramentas Quantitativas',
+        'tools_subtitle': 'Calculadoras interativas para probabilidade, estatística e modelagem financeira.',
+        'tools_cat_distributions': 'Distribuições',
+        'tools_cat_hypothesis': 'Testes de Hipótese',
+        'tools_cat_simulation': 'Simulação & Precificação',
+        'tools_cat_portfolio': 'Portfólio & Risco',
+        'tools_cat_timeseries': 'Séries Temporais & Volatilidade',
+        'tools_cat_fundamental': 'Fundamentais',
+        'tools_open': 'Abrir →',
+        'tools_back': '← Voltar para Ferramentas',
+        'tools_how_it_works': 'Como Funciona',
+        'tools_formula': 'Fórmula',
+        'tools_inputs': 'Parâmetros',
+        'tools_results': 'Resultados',
+        'tools_calculate': 'Calcular',
+        'tools_reset': 'Resetar',
+        
         # Errors
         'error_403_title': 'Acesso Negado — J-Finance',
         'error_403_heading': 'Acesso Negado',
@@ -242,6 +264,8 @@ TRANSLATIONS = {
         'footer_all_courses': 'All courses',
         'footer_about': 'About',
         'footer_homepage': 'Homepage',
+        'footer_tools': 'Tools',
+        'footer_all_tools': 'All tools',
         'footer_rights': 'All rights reserved.',
         
         # Home Page
@@ -414,6 +438,26 @@ TRANSLATIONS = {
         'post_editor_published': 'Publish immediately',
         'course_editor_btn_save': 'Save Course',
         'course_editor_btn_saving': 'Saving...',
+        
+        # Ferramentas (Tools)
+        'nav_tools': 'Tools',
+        'tools_title': 'Tools — J-Finance',
+        'tools_page_title': 'Quantitative Tools',
+        'tools_subtitle': 'Interactive calculators for probability, statistics, and financial modeling.',
+        'tools_cat_distributions': 'Distributions',
+        'tools_cat_hypothesis': 'Hypothesis Testing',
+        'tools_cat_simulation': 'Simulation & Pricing',
+        'tools_cat_portfolio': 'Portfolio & Risk',
+        'tools_cat_timeseries': 'Time Series & Volatility',
+        'tools_cat_fundamental': 'Fundamentals',
+        'tools_open': 'Open →',
+        'tools_back': '← Back to Tools',
+        'tools_how_it_works': 'How It Works',
+        'tools_formula': 'Formula',
+        'tools_inputs': 'Parameters',
+        'tools_results': 'Results',
+        'tools_calculate': 'Calculate',
+        'tools_reset': 'Reset',
         
         # Errors
         'error_403_title': 'Access Denied — J-Finance',

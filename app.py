@@ -582,6 +582,137 @@ def lesson_detail(course_id, module_id, lesson_id):
 
 
 # ============================================================================
+# FERRAMENTAS (TOOLS) - Dados e Rotas
+# ============================================================================
+
+TOOLS = [
+    {
+        "slug": "distribuicao-normal",
+        "title": "Distribuição Normal",
+        "description": "Visualize a curva gaussiana, calcule probabilidades a partir de Z-scores e explore PDF/CDF interativamente.",
+        "category": "distributions",
+        "icon": "bell",
+    },
+    {
+        "slug": "monte-carlo",
+        "title": "Simulação Monte Carlo",
+        "description": "Simule trajetórias de preços de ativos usando Movimento Browniano Geométrico (GBM).",
+        "category": "simulation",
+        "icon": "shuffle",
+    },
+    {
+        "slug": "fronteira-eficiente",
+        "title": "Fronteira Eficiente & Sharpe",
+        "description": "Construa a fronteira eficiente de Markowitz e encontre o portfólio ótimo para um dado nível de risco.",
+        "category": "portfolio",
+        "icon": "target",
+    },
+    {
+        "slug": "garch",
+        "title": "Modelo GARCH(1,1)",
+        "description": "Modele a volatilidade condicional de retornos financeiros com o modelo GARCH(1,1).",
+        "category": "timeseries",
+        "icon": "activity",
+    },
+    {
+        "slug": "black-scholes",
+        "title": "Black-Scholes",
+        "description": "Precifique opções europeias (Call/Put) e calcule as Greeks (Δ, Γ, Θ, ν, ρ).",
+        "category": "simulation",
+        "icon": "trending-up",
+    },
+    {
+        "slug": "teste-hipotese",
+        "title": "Teste de Hipótese",
+        "description": "Realize testes t e z, calcule p-values e visualize regiões de rejeição.",
+        "category": "hypothesis",
+        "icon": "check-circle",
+    },
+    {
+        "slug": "matriz-correlacao",
+        "title": "Matriz de Correlação",
+        "description": "Calcule e visualize a matriz de correlação de Pearson para múltiplos ativos.",
+        "category": "portfolio",
+        "icon": "grid",
+    },
+    {
+        "slug": "juros-compostos",
+        "title": "Juros Compostos",
+        "description": "Calcule o valor futuro com capitalização discreta ou contínua e visualize o crescimento.",
+        "category": "fundamental",
+        "icon": "dollar-sign",
+    },
+    {
+        "slug": "bayesiano",
+        "title": "Atualização Bayesiana",
+        "description": "Atualize crenças com evidência nova usando o modelo Beta-Binomial conjugado.",
+        "category": "fundamental",
+        "icon": "refresh-cw",
+    },
+    {
+        "slug": "kalman",
+        "title": "Filtro de Kalman",
+        "description": "Estime dinamicamente o estado de um sistema a partir de observações ruidosas.",
+        "category": "timeseries",
+        "icon": "filter",
+    },
+]
+
+TOOL_CATEGORIES = [
+    {"key": "distributions", "translation_key": "tools_cat_distributions"},
+    {"key": "hypothesis", "translation_key": "tools_cat_hypothesis"},
+    {"key": "simulation", "translation_key": "tools_cat_simulation"},
+    {"key": "portfolio", "translation_key": "tools_cat_portfolio"},
+    {"key": "timeseries", "translation_key": "tools_cat_timeseries"},
+    {"key": "fundamental", "translation_key": "tools_cat_fundamental"},
+]
+
+
+@app.route("/ferramentas")
+def ferramentas_list():
+    """
+    Página de catálogo de ferramentas quantitativas.
+    Exibe todas as ferramentas organizadas por categoria,
+    com suporte a busca por texto e filtro por categoria.
+    """
+    busca = request.args.get("q", "").strip().lower()
+    cat_filtro = request.args.get("cat", "").strip()
+
+    filtered_tools = TOOLS
+    if busca:
+        filtered_tools = [
+            t for t in filtered_tools
+            if busca in t["title"].lower() or busca in t["description"].lower()
+        ]
+    if cat_filtro:
+        filtered_tools = [t for t in filtered_tools if t["category"] == cat_filtro]
+
+    return render_template(
+        "ferramentas/list.html",
+        tools=filtered_tools,
+        categories=TOOL_CATEGORIES,
+        busca=request.args.get("q", ""),
+        cat_filtro=cat_filtro
+    )
+
+
+@app.route("/ferramentas/<slug>")
+@login_obrigatorio
+def ferramenta_detail(slug):
+    """
+    Página de uma ferramenta individual com calculadora interativa.
+    """
+    tool = next((t for t in TOOLS if t["slug"] == slug), None)
+    if not tool:
+        return render_template("errors/404.html"), 404
+
+    return render_template(
+        f"ferramentas/tools/{slug}.html",
+        tool=tool
+    )
+
+
+# ============================================================================
 # ROTAS DE AUTENTICAÇÃO
 # ============================================================================
 
@@ -609,8 +740,8 @@ def login_post():
         return jsonify({"success": False, "error": "Token não fornecido"}), 400
 
     try:
-        # Verifica o token no servidor
-        decoded_token = firebase_auth.verify_id_token(id_token)
+        # Verifica o token no servidor com tolerância para diferença de relógio
+        decoded_token = firebase_auth.verify_id_token(id_token, clock_skew_seconds=10)
         uid = decoded_token["uid"]
         email = decoded_token.get("email", "")
 
@@ -643,9 +774,11 @@ def login_post():
 
         return jsonify({"success": True, "redirect": next_url})
 
-    except firebase_auth.InvalidIdTokenError:
+    except firebase_auth.InvalidIdTokenError as e:
+        print("Erro de Token Inválido:", e)
         return jsonify({"success": False, "error": "Token inválido"}), 401
     except Exception as e:
+        print("Erro Inesperado no Login:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

@@ -1,0 +1,161 @@
+{% extends "ferramentas/tool_base.html" %}
+
+{% block tool_content %}
+<div class="tool-layout">
+    <div class="tool-panel">
+        <h3 class="tool-panel__title">{{ t('tools_inputs') }}</h3>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-4);">
+            Insira retornos diários (%) separados por vírgula para cada ativo. Use dados de exemplo ou insira os seus.
+        </p>
+        <div class="tool-field">
+            <label class="tool-field__label">Ativo A (retornos %)</label>
+            <textarea id="asset-a" rows="3" style="width:100%;padding:var(--space-2) var(--space-3);border:1.5px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg);color:var(--color-text);font-family:var(--font-mono);font-size:var(--text-xs);resize:vertical;">1.2, -0.5, 0.8, -1.1, 2.3, 0.1, -0.7, 1.5, -0.3, 0.9, -1.4, 0.6, 1.8, -0.2, 0.4, -0.9, 1.1, 0.3, -0.6, 0.7</textarea>
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Ativo B (retornos %)</label>
+            <textarea id="asset-b" rows="3" style="width:100%;padding:var(--space-2) var(--space-3);border:1.5px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg);color:var(--color-text);font-family:var(--font-mono);font-size:var(--text-xs);resize:vertical;">0.8, -0.2, 0.5, -0.6, 1.4, 0.3, -0.4, 0.9, -0.1, 0.6, -0.8, 0.4, 1.1, -0.3, 0.2, -0.5, 0.7, 0.1, -0.3, 0.5</textarea>
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Ativo C (retornos %)</label>
+            <textarea id="asset-c" rows="3" style="width:100%;padding:var(--space-2) var(--space-3);border:1.5px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg);color:var(--color-text);font-family:var(--font-mono);font-size:var(--text-xs);resize:vertical;">-0.3, 0.4, -0.1, 0.7, -0.9, 0.2, 0.5, -0.6, 0.3, -0.2, 0.8, -0.4, -0.5, 0.6, -0.1, 0.3, -0.7, 0.4, 0.2, -0.3</textarea>
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Ativo D (retornos %) — opcional</label>
+            <textarea id="asset-d" rows="3" style="width:100%;padding:var(--space-2) var(--space-3);border:1.5px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg);color:var(--color-text);font-family:var(--font-mono);font-size:var(--text-xs);resize:vertical;"></textarea>
+        </div>
+        <div class="tool-actions">
+            <button class="btn btn-gold" onclick="calculate()">{{ t('tools_calculate') }}</button>
+        </div>
+    </div>
+
+    <div class="tool-output">
+        <div class="tool-chart-card">
+            <h4 style="font-family:var(--font-display);font-size:var(--text-lg);font-weight:600;margin-bottom:var(--space-4);color:var(--color-text);">Matriz de Correlação</h4>
+            <canvas id="heatmap" width="500" height="500"></canvas>
+        </div>
+
+        <div class="tool-results-grid" id="corr-values"></div>
+
+        <div class="tool-formula-section">
+            <h3 class="tool-formula-section__title">{{ t('tools_formula') }}</h3>
+            <div class="formula-block">
+                ρ(X,Y) = Cov(X,Y) / (σ<sub>X</sub> × σ<sub>Y</sub>)<br>
+                Cov(X,Y) = E[(X−μ<sub>X</sub>)(Y−μ<sub>Y</sub>)]
+            </div>
+            <div class="tool-explanation">
+                <p>A <strong>correlação de Pearson</strong> mede a relação linear entre dois ativos.
+                Valores próximos de +1 indicam forte correlação positiva, −1 indica correlação negativa,
+                e 0 indica ausência de correlação linear.</p>
+                <ul>
+                    <li><strong>ρ (rho)</strong> — coeficiente de correlação entre dois ativos. Varia de −1 a +1.</li>
+                    <li><strong>Cov(X,Y)</strong> — covariância: mede se dois ativos tendem a subir ou cair juntos. Valor positivo = mesma direção; negativo = direções opostas.</li>
+                    <li><strong>σₓ</strong> — desvio padrão do ativo X (medida do seu risco individual).</li>
+                    <li><strong>σᵧ</strong> — desvio padrão do ativo Y.</li>
+                    <li><strong>μₓ, μᵧ</strong> — médias dos retornos de X e Y. Aparecem no cálculo da covariância para centralizar os dados.</li>
+                    <li><strong>E[·]</strong> — valor esperado (média) de uma série de observações.</li>
+                </ul>
+                <p><strong>Exemplo prático:</strong> se ações de petróleo (X) e ações de companhias aéreas (Y) têm ρ ≈ −0,6, quando o petróleo sobe, as aéreas tendem a cair — útil para diversificar um portfólio.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    function parseReturns(text) {
+        return text.trim().split(',').map(s=>parseFloat(s.trim())).filter(v=>!isNaN(v));
+    }
+    function mean(arr){return arr.reduce((a,b)=>a+b,0)/arr.length;}
+    function corr(a,b){
+        const n=Math.min(a.length,b.length);
+        const ma=mean(a.slice(0,n)),mb=mean(b.slice(0,n));
+        let num=0,da=0,db=0;
+        for(let i=0;i<n;i++){
+            const x=a[i]-ma,y=b[i]-mb;
+            num+=x*y; da+=x*x; db+=y*y;
+        }
+        return num/Math.sqrt(da*db);
+    }
+
+    window.calculate = function() {
+        const assets = [];
+        const labels = [];
+        ['a','b','c','d'].forEach((id,i)=>{
+            const r=parseReturns(document.getElementById('asset-'+id).value);
+            if(r.length>=3){assets.push(r);labels.push(String.fromCharCode(65+i));}
+        });
+
+        if(assets.length<2){alert('Insira retornos para pelo menos 2 ativos.');return;}
+
+        const n=assets.length;
+        const matrix=[];
+        for(let i=0;i<n;i++){
+            matrix[i]=[];
+            for(let j=0;j<n;j++) matrix[i][j]=corr(assets[i],assets[j]);
+        }
+
+        // Draw heatmap
+        const canvas=document.getElementById('heatmap');
+        const ctx=canvas.getContext('2d');
+        const size=Math.min(canvas.parentElement.clientWidth-48,450);
+        canvas.width=size; canvas.height=size;
+        const cellSize=size/(n+1);
+        const offset=cellSize;
+
+        ctx.clearRect(0,0,size,size);
+
+        // Colors
+        function getColor(v){
+            if(v>=0) return `rgba(201,168,76,${0.15+v*0.85})`;
+            else return `rgba(224,80,112,${0.15+Math.abs(v)*0.85})`;
+        }
+
+        const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+        const txtColor=isDark?'#F0EDE6':'#1A1A1A';
+        const labelColor=isDark?'#C9A84C':'#1B3A5C';
+
+        // Labels
+        ctx.font='bold 14px Inter';
+        ctx.fillStyle=labelColor;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        for(let i=0;i<n;i++){
+            ctx.fillText(labels[i],offset+i*cellSize+cellSize/2,offset/2);
+            ctx.fillText(labels[i],offset/2,offset+i*cellSize+cellSize/2);
+        }
+
+        // Cells
+        for(let i=0;i<n;i++){
+            for(let j=0;j<n;j++){
+                const x=offset+j*cellSize, y=offset+i*cellSize;
+                const v=matrix[i][j];
+                ctx.fillStyle=getColor(v);
+                ctx.beginPath();
+                ctx.roundRect(x+2,y+2,cellSize-4,cellSize-4,6);
+                ctx.fill();
+
+                ctx.fillStyle=Math.abs(v)>0.5?'#FFF':txtColor;
+                ctx.font='bold 16px JetBrains Mono';
+                ctx.textAlign='center';ctx.textBaseline='middle';
+                ctx.fillText(v.toFixed(2),x+cellSize/2,y+cellSize/2);
+            }
+        }
+
+        // Results grid
+        const container=document.getElementById('corr-values');
+        container.innerHTML='';
+        for(let i=0;i<n;i++){
+            for(let j=i+1;j<n;j++){
+                const div=document.createElement('div');
+                div.className='tool-result';
+                div.innerHTML=`<div class="tool-result__label">ρ(${labels[i]},${labels[j]})</div><div class="tool-result__value">${matrix[i][j].toFixed(4)}</div>`;
+                container.appendChild(div);
+            }
+        }
+    };
+
+    calculate();
+})();
+</script>
+{% endblock %}

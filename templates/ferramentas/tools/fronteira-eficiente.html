@@ -1,0 +1,183 @@
+{% extends "ferramentas/tool_base.html" %}
+
+{% block tool_content %}
+<div class="tool-layout">
+    <div class="tool-panel">
+        <h3 class="tool-panel__title">{{ t('tools_inputs') }} (3 Ativos)</h3>
+        <div class="tool-field">
+            <label class="tool-field__label">Retorno A (%) <span class="tool-field__value" id="ra-val">12</span></label>
+            <input type="range" id="ra" min="1" max="30" step="0.5" value="12">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Retorno B (%) <span class="tool-field__value" id="rb-val">8</span></label>
+            <input type="range" id="rb" min="1" max="30" step="0.5" value="8">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Retorno C (%) <span class="tool-field__value" id="rc-val">5</span></label>
+            <input type="range" id="rc" min="1" max="30" step="0.5" value="5">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Vol A (%) <span class="tool-field__value" id="va-val">25</span></label>
+            <input type="range" id="va" min="5" max="50" step="1" value="25">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Vol B (%) <span class="tool-field__value" id="vb-val">15</span></label>
+            <input type="range" id="vb" min="5" max="50" step="1" value="15">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Vol C (%) <span class="tool-field__value" id="vc-val">10</span></label>
+            <input type="range" id="vc" min="5" max="50" step="1" value="10">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Corr AB <span class="tool-field__value" id="cab-val">0.30</span></label>
+            <input type="range" id="cab" min="-0.9" max="0.9" step="0.05" value="0.30">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Corr AC <span class="tool-field__value" id="cac-val">0.10</span></label>
+            <input type="range" id="cac" min="-0.9" max="0.9" step="0.05" value="0.10">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Corr BC <span class="tool-field__value" id="cbc-val">0.20</span></label>
+            <input type="range" id="cbc" min="-0.9" max="0.9" step="0.05" value="0.20">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Taxa livre de risco (%) <span class="tool-field__value" id="rf-val">3</span></label>
+            <input type="range" id="rf" min="0" max="10" step="0.5" value="3">
+        </div>
+        <div class="tool-actions">
+            <button class="btn btn-gold" onclick="calculate()">{{ t('tools_calculate') }}</button>
+        </div>
+    </div>
+
+    <div class="tool-output">
+        <div class="tool-results-grid">
+            <div class="tool-result">
+                <div class="tool-result__label">Sharpe Máximo</div>
+                <div class="tool-result__value" id="res-sharpe">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Retorno Ótimo</div>
+                <div class="tool-result__value" id="res-ret">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Risco Ótimo</div>
+                <div class="tool-result__value" id="res-risk">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Pesos (A/B/C)</div>
+                <div class="tool-result__value" id="res-weights" style="font-size:var(--text-sm)">—</div>
+            </div>
+        </div>
+
+        <div class="tool-chart-card">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div class="tool-formula-section">
+            <h3 class="tool-formula-section__title">{{ t('tools_formula') }}</h3>
+            <div class="formula-block">
+                R<sub>p</sub> = Σ wᵢRᵢ &nbsp;&nbsp;|&nbsp;&nbsp; σ<sub>p</sub>² = w<sup>T</sup>Σw<br>
+                Sharpe = (R<sub>p</sub> − R<sub>f</sub>) / σ<sub>p</sub>
+            </div>
+            <div class="tool-explanation">
+                <p>A <strong>Fronteira Eficiente</strong> de Markowitz mostra os portfólios com melhor retorno
+                para cada nível de risco. O <strong>índice de Sharpe</strong> identifica o portfólio
+                ótimo ajustado ao risco.</p>
+                <ul>
+                    <li><strong>Rₚ</strong> — retorno esperado do portfólio. É a média ponderada dos retornos individuais.</li>
+                    <li><strong>wᵢ</strong> — peso (percentual investido) no ativo i. Exemplo: 40% em A, 30% em B e 30% em C. A soma dos pesos deve ser 100%.</li>
+                    <li><strong>Rᵢ</strong> — retorno esperado do ativo i. Exemplo: ações da empresa A rendem 12% ao ano.</li>
+                    <li><strong>σₚ²</strong> — variância do portfólio, ou seja, o risco total combinado. Não é apenas a média dos riscos porque a diversificação reduz o risco total.</li>
+                    <li><strong>w</strong> — vetor de pesos dos ativos.</li>
+                    <li><strong>Σ (sigma maiúsculo)</strong> — matriz de covariância: mostra como os ativos se movem juntos. Os números fora da diagonal dependem da correlação entre os ativos.</li>
+                    <li><strong>Rƒ</strong> — taxa livre de risco. Exemplo: retorno de um título do governo (~3% ao ano).</li>
+                    <li><strong>Sharpe</strong> — (Rₚ − Rƒ) / σₚ. Quanto maior, mais retorno o portfólio entrega por cada unidade de risco assumido.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const ctx = document.getElementById('chart').getContext('2d');
+    const gold='#C9A84C', navy='#1B3A5C';
+    const textColor=getComputedStyle(document.documentElement).getPropertyValue('--color-text-faint').trim()||'#888';
+    const gridColor=(getComputedStyle(document.documentElement).getPropertyValue('--color-divider').trim()||'#D0D0D0')+'33';
+
+    let chart = new Chart(ctx, {
+        type:'scatter',
+        data:{datasets:[
+            {label:'Portfólios',data:[],backgroundColor:'rgba(168,196,224,0.3)',pointRadius:2},
+            {label:'Fronteira Eficiente',data:[],borderColor:gold,backgroundColor:'transparent',pointRadius:0,showLine:true,borderWidth:2.5,tension:0.3},
+            {label:'Sharpe Máximo',data:[],backgroundColor:'#E05070',pointRadius:8,pointStyle:'star'}
+        ]},
+        options:{
+            responsive:true,maintainAspectRatio:true,animation:{duration:300},
+            plugins:{legend:{labels:{color:textColor,font:{family:'Inter',size:11}}}},
+            scales:{
+                x:{title:{display:true,text:'Risco (σ %)',color:textColor},ticks:{color:textColor,font:{size:10}},grid:{color:gridColor}},
+                y:{title:{display:true,text:'Retorno (%)',color:textColor},ticks:{color:textColor,font:{family:'JetBrains Mono',size:10}},grid:{color:gridColor}}
+            }
+        }
+    });
+
+    ['ra','rb','rc','va','vb','vc','cab','cac','cbc','rf'].forEach(id=>{
+        document.getElementById(id).addEventListener('input',function(){
+            document.getElementById(id+'-val').textContent=this.value;
+        });
+    });
+
+    window.calculate = function() {
+        const R=[parseFloat(document.getElementById('ra').value),parseFloat(document.getElementById('rb').value),parseFloat(document.getElementById('rc').value)];
+        const V=[parseFloat(document.getElementById('va').value)/100,parseFloat(document.getElementById('vb').value)/100,parseFloat(document.getElementById('vc').value)/100];
+        const rAB=parseFloat(document.getElementById('cab').value),rAC=parseFloat(document.getElementById('cac').value),rBC=parseFloat(document.getElementById('cbc').value);
+        const rf=parseFloat(document.getElementById('rf').value);
+
+        // Covariance matrix
+        const cov=[[V[0]*V[0],rAB*V[0]*V[1],rAC*V[0]*V[2]],[rAB*V[0]*V[1],V[1]*V[1],rBC*V[1]*V[2]],[rAC*V[0]*V[2],rBC*V[1]*V[2],V[2]*V[2]]];
+
+        const N=5000;
+        const portfolios=[], frontier=[];
+        let bestSharpe=-Infinity, bestP=null;
+
+        for(let i=0;i<N;i++){
+            let w1=Math.random(),w2=Math.random()*(1-w1),w3=1-w1-w2;
+            const w=[w1,w2,w3];
+            const ret=w[0]*R[0]+w[1]*R[1]+w[2]*R[2];
+            let variance=0;
+            for(let a=0;a<3;a++) for(let b=0;b<3;b++) variance+=w[a]*w[b]*cov[a][b];
+            const risk=Math.sqrt(variance)*100;
+            const sharpe=(ret-rf)/risk;
+            const p={x:parseFloat(risk.toFixed(2)),y:parseFloat(ret.toFixed(2)),w:[...w],sharpe};
+            portfolios.push(p);
+            if(sharpe>bestSharpe){bestSharpe=sharpe;bestP=p;}
+        }
+
+        // Extract frontier (top return for binned risk levels)
+        portfolios.sort((a,b)=>a.x-b.x);
+        const bins=50, minR=portfolios[0].x, maxR=portfolios[portfolios.length-1].x;
+        const binW=(maxR-minR)/bins;
+        for(let i=0;i<bins;i++){
+            const lo=minR+i*binW, hi=lo+binW;
+            const inBin=portfolios.filter(p=>p.x>=lo&&p.x<hi);
+            if(inBin.length>0) frontier.push(inBin.reduce((a,b)=>a.y>b.y?a:b));
+        }
+
+        document.getElementById('res-sharpe').textContent=bestSharpe.toFixed(3);
+        document.getElementById('res-ret').textContent=bestP.y.toFixed(2)+'%';
+        document.getElementById('res-risk').textContent=bestP.x.toFixed(2)+'%';
+        document.getElementById('res-weights').textContent=(bestP.w[0]*100).toFixed(0)+'/'+(bestP.w[1]*100).toFixed(0)+'/'+(bestP.w[2]*100).toFixed(0);
+
+        chart.data.datasets[0].data=portfolios.map(p=>({x:p.x,y:p.y}));
+        chart.data.datasets[1].data=frontier.map(p=>({x:p.x,y:p.y}));
+        chart.data.datasets[2].data=[{x:bestP.x,y:bestP.y}];
+        chart.update();
+    };
+
+    calculate();
+})();
+</script>
+{% endblock %}

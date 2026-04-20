@@ -1,0 +1,230 @@
+{% extends "ferramentas/tool_base.html" %}
+
+{% block tool_content %}
+<div class="tool-layout">
+    <div class="tool-panel">
+        <h3 class="tool-panel__title">{{ t('tools_inputs') }}</h3>
+        <div class="tool-field">
+            <label class="tool-field__label">Preço Inicial (S₀) <span class="tool-field__value" id="s0-val">100</span></label>
+            <input type="range" id="s0" min="10" max="500" step="5" value="100">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Drift Anual (μ) <span class="tool-field__value" id="drift-val">0.08</span></label>
+            <input type="range" id="drift" min="-0.20" max="0.40" step="0.01" value="0.08">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Volatilidade (σ) <span class="tool-field__value" id="vol-val">0.20</span></label>
+            <input type="range" id="vol" min="0.05" max="0.80" step="0.01" value="0.20">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Horizonte (anos) <span class="tool-field__value" id="T-val">1</span></label>
+            <input type="range" id="T" min="0.25" max="5" step="0.25" value="1">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Nº Simulações <span class="tool-field__value" id="nsim-val">50</span></label>
+            <input type="range" id="nsim" min="10" max="200" step="10" value="50">
+        </div>
+        <div class="tool-actions">
+            <button class="btn btn-gold" onclick="simulate()">Simular</button>
+            <button class="btn btn-ghost" onclick="resetInputs()">{{ t('tools_reset') }}</button>
+        </div>
+    </div>
+
+    <div class="tool-output">
+        <div class="tool-results-grid">
+            <div class="tool-result">
+                <div class="tool-result__label">Preço Médio Final</div>
+                <div class="tool-result__value" id="res-mean">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Mediana Final</div>
+                <div class="tool-result__value" id="res-median">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">VaR 5%</div>
+                <div class="tool-result__value" id="res-var">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Prob. Lucro</div>
+                <div class="tool-result__value" id="res-profit">—</div>
+            </div>
+        </div>
+
+        <div class="tool-chart-card">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div class="tool-chart-card">
+            <canvas id="histogram"></canvas>
+        </div>
+
+        <div class="tool-formula-section">
+            <h3 class="tool-formula-section__title">{{ t('tools_formula') }}</h3>
+            <div class="formula-block">
+                S(t+Δt) = S(t) × exp((μ − σ²/2)Δt + σ√Δt × Z)<br>
+                Z ~ N(0, 1)
+            </div>
+            <div class="tool-explanation">
+                <p>O <strong>Movimento Browniano Geométrico (GBM)</strong> é o modelo padrão para simular
+                trajetórias de preços de ativos.</p>
+                <ul>
+                    <li><strong>S(t)</strong> — preço do ativo no momento t.</li>
+                    <li><strong>S(t+Δt)</strong> — preço do ativo no próximo pequeno intervalo de tempo.</li>
+                    <li><strong>μ</strong> — drift (retorno esperado anual). Exemplo: μ = 0,08 significa que, em média, o ativo sobe 8% ao ano.</li>
+                    <li><strong>σ</strong> — volatilidade anual. Mede o "tamanho" dos movimentos aleatórios. Exemplo: σ = 0,20 = 20% ao ano.</li>
+                    <li><strong>Δt</strong> — pequeno passo de tempo. Em 252 dias úteis, Δt = 1/252 ≈ 0,004.</li>
+                    <li><strong>Z</strong> — número aleatório padrão normal (média 0, desvio 1). Representa o "choque" aleatório do mercado em cada dia.</li>
+                    <li><strong>e</strong> — número de Euler (~2,718). Transforma o retorno contínuo em preço multiplicativo.</li>
+                    <li><strong>σ²/2</strong> — termo de correção de Itô: ajusta a média para que o retorno esperado continue sendo μ mesmo com a aleatoriedade.</li>
+                </ul>
+                <p>A <strong>Simulação Monte Carlo</strong> gera milhares de cenários possíveis para estimar
+                distribuições de preço, Value at Risk (VaR) e probabilidades de lucro/perda.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    function randn() {
+        let u = 0, v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    const chartCtx = document.getElementById('chart').getContext('2d');
+    const histCtx = document.getElementById('histogram').getContext('2d');
+    const gold = '#C9A84C';
+    const goldAlpha = 'rgba(201,168,76,0.12)';
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text-faint').trim() || '#888';
+    const gridColor = (getComputedStyle(document.documentElement).getPropertyValue('--color-divider').trim() || '#D0D0D0') + '33';
+
+    const pathColors = [
+        'rgba(201,168,76,0.35)', 'rgba(168,196,224,0.35)', 'rgba(80,184,120,0.3)',
+        'rgba(224,80,112,0.3)', 'rgba(224,154,64,0.3)', 'rgba(130,130,200,0.3)'
+    ];
+
+    let pathChart = new Chart(chartCtx, {
+        type: 'line',
+        data: { labels: [], datasets: [] },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            animation: { duration: 200 },
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { title: { display: true, text: 'Dias', color: textColor }, ticks: { color: textColor, maxTicksLimit: 10, font: { size: 10 } }, grid: { color: gridColor } },
+                y: { title: { display: true, text: 'Preço', color: textColor }, ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: gridColor } }
+            }
+        }
+    });
+
+    let histChart = new Chart(histCtx, {
+        type: 'bar',
+        data: { labels: [], datasets: [{ label: 'Frequência', data: [], backgroundColor: goldAlpha, borderColor: gold, borderWidth: 1 }] },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            animation: { duration: 200 },
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { title: { display: true, text: 'Preço Final', color: textColor }, ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
+                y: { title: { display: true, text: 'Frequência', color: textColor }, ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor }, beginAtZero: true }
+            }
+        }
+    });
+
+    // Bind sliders
+    ['s0','drift','vol','T','nsim'].forEach(id => {
+        document.getElementById(id).addEventListener('input', function() {
+            document.getElementById(id + '-val').textContent = this.value;
+        });
+    });
+
+    window.simulate = function() {
+        const S0 = parseFloat(document.getElementById('s0').value);
+        const mu = parseFloat(document.getElementById('drift').value);
+        const sigma = parseFloat(document.getElementById('vol').value);
+        const T = parseFloat(document.getElementById('T').value);
+        const nSim = parseInt(document.getElementById('nsim').value);
+        const nSteps = Math.round(T * 252);
+        const dt = T / nSteps;
+
+        const finalPrices = [];
+        const datasets = [];
+        const labels = Array.from({length: nSteps + 1}, (_, i) => i);
+
+        for (let s = 0; s < nSim; s++) {
+            let price = S0;
+            const path = [price];
+            for (let i = 0; i < nSteps; i++) {
+                const z = randn();
+                price = price * Math.exp((mu - 0.5 * sigma * sigma) * dt + sigma * Math.sqrt(dt) * z);
+                path.push(price);
+            }
+            finalPrices.push(price);
+            datasets.push({
+                data: path,
+                borderColor: pathColors[s % pathColors.length],
+                borderWidth: 1,
+                pointRadius: 0,
+                fill: false,
+                tension: 0,
+            });
+        }
+
+        // Stats
+        finalPrices.sort((a, b) => a - b);
+        const mean = finalPrices.reduce((a, b) => a + b, 0) / nSim;
+        const median = finalPrices[Math.floor(nSim / 2)];
+        const var5 = finalPrices[Math.floor(nSim * 0.05)];
+        const probProfit = finalPrices.filter(p => p > S0).length / nSim * 100;
+
+        document.getElementById('res-mean').textContent = mean.toFixed(2);
+        document.getElementById('res-median').textContent = median.toFixed(2);
+        document.getElementById('res-var').textContent = var5.toFixed(2);
+        document.getElementById('res-profit').textContent = probProfit.toFixed(1) + '%';
+
+        // Path chart
+        pathChart.data.labels = labels;
+        pathChart.data.datasets = datasets;
+        pathChart.update();
+
+        // Histogram
+        const nBins = 30;
+        const minP = finalPrices[0];
+        const maxP = finalPrices[finalPrices.length - 1];
+        const binWidth = (maxP - minP) / nBins;
+        const bins = Array(nBins).fill(0);
+        const binLabels = [];
+        for (let i = 0; i < nBins; i++) {
+            binLabels.push((minP + (i + 0.5) * binWidth).toFixed(1));
+        }
+        finalPrices.forEach(p => {
+            let idx = Math.floor((p - minP) / binWidth);
+            if (idx >= nBins) idx = nBins - 1;
+            bins[idx]++;
+        });
+
+        histChart.data.labels = binLabels;
+        histChart.data.datasets[0].data = bins;
+        histChart.update();
+    };
+
+    window.resetInputs = function() {
+        document.getElementById('s0').value = 100;
+        document.getElementById('drift').value = 0.08;
+        document.getElementById('vol').value = 0.20;
+        document.getElementById('T').value = 1;
+        document.getElementById('nsim').value = 50;
+        ['s0','drift','vol','T','nsim'].forEach(id => {
+            document.getElementById(id + '-val').textContent = document.getElementById(id).value;
+        });
+        simulate();
+    };
+
+    simulate();
+})();
+</script>
+{% endblock %}

@@ -3,14 +3,27 @@
 {% block title %}{{ t('courses_title') }}{% endblock %}
 
 {% block content %}
+<section class="courses-hero">
+    <div class="container">
+        <div class="courses-hero__content">
+            <h1 class="courses-hero__title">{{ t('courses_page_title') }}</h1>
+            <p class="courses-hero__subtitle">{{ t('courses_login_prompt') }}</p>
+        </div>
+        <!-- Decorative math symbols -->
+        <div class="courses-hero__decoration" aria-hidden="true">
+            <span class="float-symbol float-symbol--1">∑</span>
+            <span class="float-symbol float-symbol--2">σ²</span>
+            <span class="float-symbol float-symbol--3">∫</span>
+            <span class="float-symbol float-symbol--4">μ</span>
+            <span class="float-symbol float-symbol--5">Δ</span>
+            <span class="float-symbol float-symbol--6">π</span>
+        </div>
+    </div>
+    <div class="hero__divider"></div>
+</section>
+
 <section class="section section--courses">
     <div class="container">
-        <!-- Cabeçalho -->
-        <header class="courses-header">
-            <h1 class="page-title">{{ t('courses_page_title') }}</h1>
-            <div class="title-underline"></div>
-            <p class="page-subtitle">{{ t('courses_login_prompt') }}</p>
-        </header>
 
         <!-- Lista de cursos -->
         {% if courses %}
@@ -90,35 +103,100 @@
 
 {% block head %}
 <style>
-    /* Seção de cursos */
-    .section--courses {
-        padding: var(--space-16) 0 var(--space-20);
+    /* COURSES HERO */
+    .courses-hero {
         background: var(--color-bg);
-        min-height: 80vh;
+        color: var(--color-text);
+        padding: var(--space-10) 0 var(--space-8);
+        position: relative;
+        overflow: hidden;
     }
 
-    /* Cabeçalho */
-    .courses-header {
-        margin-bottom: var(--space-10);
+    .courses-hero::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(var(--color-gold-glow) 1px, transparent 1px);
+        background-size: 32px 32px;
+        pointer-events: none;
+    }
+
+    [data-theme="dark"] .courses-hero {
+        background: linear-gradient(135deg, #14253D 0%, #0B1520 50%, #091018 100%);
+    }
+
+    [data-theme="dark"] .courses-hero::before {
+        background-image: radial-gradient(rgba(212, 184, 92, 0.05) 1px, transparent 1px);
+    }
+
+    .courses-hero__content {
+        position: relative;
         text-align: center;
+        max-width: 640px;
+        margin: 0 auto;
     }
 
-    .page-title {
+    .courses-hero__title {
         font-family: var(--font-display);
-        font-size: var(--text-3xl);
+        font-size: var(--text-hero);
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+        margin-bottom: var(--space-5);
         color: var(--color-text);
     }
 
-    .title-underline {
-        width: 48px;
-        height: 2px;
-        background: var(--color-text);
-        margin: var(--space-2) auto var(--space-4);
-    }
-
-    .page-subtitle {
+    .courses-hero__subtitle {
         font-size: var(--text-lg);
         color: var(--color-text-muted);
+        margin: 0 auto var(--space-4);
+        line-height: 1.7;
+        font-weight: 300;
+        max-width: 500px;
+    }
+
+    /* Floating math symbols */
+    .courses-hero__decoration {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    .float-symbol {
+        position: absolute;
+        font-family: var(--font-mono);
+        color: var(--color-gold);
+        opacity: 0.12;
+        font-size: 2rem;
+        animation: floatSymbol 8s ease-in-out infinite;
+    }
+
+    .float-symbol--1 { top: 10%; left: 8%; animation-delay: 0s; font-size: 2.5rem; }
+    .float-symbol--2 { top: 25%; right: 12%; animation-delay: 1.2s; font-size: 1.8rem; }
+    .float-symbol--3 { bottom: 20%; left: 15%; animation-delay: 2.5s; font-size: 3rem; }
+    .float-symbol--4 { top: 15%; right: 25%; animation-delay: 0.8s; }
+    .float-symbol--5 { bottom: 30%; right: 8%; animation-delay: 3s; font-size: 2.2rem; }
+    .float-symbol--6 { bottom: 15%; left: 30%; animation-delay: 1.8s; font-size: 1.6rem; }
+
+    @keyframes floatSymbol {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(-12px) rotate(5deg); }
+    }
+
+    .hero__divider {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+    }
+
+    /* Seção de cursos */
+    .section--courses {
+        padding: var(--space-12) 0 var(--space-20);
+        background: var(--color-bg);
+        min-height: 60vh;
     }
 
     /* Grid de cursos */
@@ -265,6 +343,14 @@
 
     /* Responsivo */
     @media (max-width: 768px) {
+        .courses-hero {
+            padding: var(--space-8) 0 var(--space-6);
+        }
+
+        .courses-hero__decoration {
+            display: none;
+        }
+
         .courses-grid {
             grid-template-columns: 1fr;
         }

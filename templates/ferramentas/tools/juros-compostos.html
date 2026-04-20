@@ -1,0 +1,186 @@
+{% extends "ferramentas/tool_base.html" %}
+
+{% block tool_content %}
+<div class="tool-layout">
+    <div class="tool-panel">
+        <h3 class="tool-panel__title">{{ t('tools_inputs') }}</h3>
+        <div class="tool-field">
+            <label class="tool-field__label">Valor Presente (PV) <span class="tool-field__value" id="pv-val">1000</span></label>
+            <input type="range" id="pv" min="100" max="100000" step="100" value="1000">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Taxa Anual (%) <span class="tool-field__value" id="rate-val">8</span></label>
+            <input type="range" id="rate" min="0.5" max="30" step="0.5" value="8">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Período (anos) <span class="tool-field__value" id="years-val">10</span></label>
+            <input type="range" id="years" min="1" max="50" step="1" value="10">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Capitalização</label>
+            <select id="compound">
+                <option value="1">Anual</option>
+                <option value="2">Semestral</option>
+                <option value="4">Trimestral</option>
+                <option value="12" selected>Mensal</option>
+                <option value="365">Diária</option>
+                <option value="0">Contínua</option>
+            </select>
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Aporte Mensal <span class="tool-field__value" id="contrib-val">0</span></label>
+            <input type="range" id="contrib" min="0" max="5000" step="50" value="0">
+        </div>
+        <div class="tool-actions">
+            <button class="btn btn-gold" onclick="calculate()">{{ t('tools_calculate') }}</button>
+            <button class="btn btn-ghost" onclick="resetInputs()">{{ t('tools_reset') }}</button>
+        </div>
+    </div>
+
+    <div class="tool-output">
+        <div class="tool-results-grid">
+            <div class="tool-result">
+                <div class="tool-result__label">Valor Futuro</div>
+                <div class="tool-result__value" id="res-fv">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Total Investido</div>
+                <div class="tool-result__value" id="res-invested">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Juros Acumulados</div>
+                <div class="tool-result__value" id="res-interest">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Retorno Total</div>
+                <div class="tool-result__value" id="res-return">—</div>
+            </div>
+        </div>
+
+        <div class="tool-chart-card">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div class="tool-formula-section">
+            <h3 class="tool-formula-section__title">{{ t('tools_formula') }}</h3>
+            <div class="formula-block">
+                FV = PV × (1 + r/n)<sup>nt</sup> &nbsp;&nbsp;(discreto)<br>
+                FV = PV × e<sup>rt</sup> &nbsp;&nbsp;(contínuo)
+            </div>
+            <div class="tool-explanation">
+                <p>Os <strong>juros compostos</strong> são calculados sobre o capital inicial mais os juros
+                acumulados. A capitalização pode ser anual, mensal, diária ou contínua.</p>
+                <ul>
+                    <li><strong>FV</strong> — Valor Futuro: quanto o dinheiro vai valer no final. Exemplo: R$ 2.000 após 10 anos.</li>
+                    <li><strong>PV</strong> — Valor Presente: quanto você investe hoje. Exemplo: R$ 1.000.</li>
+                    <li><strong>r</strong> — taxa de juros anual. Exemplo: 8% ao ano = 0,08.</li>
+                    <li><strong>n</strong> — número de vezes que os juros são capitalizados por ano. Exemplo: n = 12 (mensal), n = 1 (anual).</li>
+                    <li><strong>t</strong> — tempo total do investimento, em anos. Exemplo: 10 anos.</li>
+                    <li><strong>e</strong> — número de Euler (~2,718), usado na capitalização contínua (quando os juros são aplicados infinitas vezes ao ano).</li>
+                    <li><strong>PMT</strong> — aporte mensal fixo que você adiciona todo mês. Exemplo: R$ 200 por mês.</li>
+                </ul>
+                <p>Com aportes mensais regulares, a fórmula da <strong>anuidade futura</strong> é adicionada:
+                FV<sub>aportes</sub> = PMT × [((1+r/n)<sup>nt</sup> − 1) / (r/n)].</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const ctx = document.getElementById('chart').getContext('2d');
+    const gold = '#C9A84C';
+    const navy = '#1B3A5C';
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text-faint').trim()||'#888';
+    const gridColor = (getComputedStyle(document.documentElement).getPropertyValue('--color-divider').trim()||'#D0D0D0')+'33';
+
+    let chart = new Chart(ctx, {
+        type:'line',
+        data: { labels:[], datasets:[
+            { label:'Valor Total', data:[], borderColor:gold, borderWidth:2.5, pointRadius:0, fill:true, backgroundColor:'rgba(201,168,76,0.1)', tension:0.3 },
+            { label:'Total Investido', data:[], borderColor:navy, borderWidth:2, borderDash:[4,4], pointRadius:0, fill:false, tension:0 }
+        ]},
+        options: {
+            responsive:true, maintainAspectRatio:true, animation:{duration:200},
+            plugins:{ legend:{ labels:{ color:textColor, font:{family:'Inter',size:11} } } },
+            scales:{
+                x:{ title:{display:true,text:'Anos',color:textColor}, ticks:{color:textColor,font:{size:10}}, grid:{color:gridColor} },
+                y:{ title:{display:true,text:'Valor (R$)',color:textColor}, ticks:{color:textColor,font:{family:'JetBrains Mono',size:10}, callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}, grid:{color:gridColor}, beginAtZero:true }
+            }
+        }
+    });
+
+    ['pv','rate','years','contrib'].forEach(id => {
+        document.getElementById(id).addEventListener('input', function() {
+            document.getElementById(id+'-val').textContent = this.value;
+        });
+    });
+
+    function fmt(v) {
+        return v >= 1000000 ? (v/1000000).toFixed(2)+'M' : v >= 1000 ? (v/1000).toFixed(2)+'k' : v.toFixed(2);
+    }
+
+    window.calculate = function() {
+        const PV = parseFloat(document.getElementById('pv').value);
+        const ratePercent = parseFloat(document.getElementById('rate').value);
+        const years = parseInt(document.getElementById('years').value);
+        const n = parseInt(document.getElementById('compound').value);
+        const PMT = parseFloat(document.getElementById('contrib').value);
+        const r = ratePercent / 100;
+
+        const labels = [], totalData = [], investedData = [];
+        let totalInvested = PV;
+
+        for (let y = 0; y <= years; y++) {
+            labels.push(y);
+            let fv;
+            if (n === 0) {
+                // Continuous
+                fv = PV * Math.exp(r * y);
+                if (PMT > 0 && y > 0) {
+                    // Approximate monthly contributions under continuous compounding
+                    fv += PMT * 12 * (Math.exp(r * y) - 1) / r;
+                }
+            } else {
+                fv = PV * Math.pow(1 + r/n, n*y);
+                if (PMT > 0 && y > 0) {
+                    const rn = r / 12; // monthly rate
+                    const months = y * 12;
+                    fv += PMT * (Math.pow(1 + rn, months) - 1) / rn;
+                }
+            }
+            totalData.push(fv);
+            investedData.push(PV + PMT * 12 * y);
+            if (y === years) totalInvested = PV + PMT * 12 * y;
+        }
+
+        const finalFV = totalData[totalData.length - 1];
+        const interest = finalFV - totalInvested;
+        const returnPct = ((finalFV / totalInvested) - 1) * 100;
+
+        document.getElementById('res-fv').textContent = fmt(finalFV);
+        document.getElementById('res-invested').textContent = fmt(totalInvested);
+        document.getElementById('res-interest').textContent = fmt(interest);
+        document.getElementById('res-return').textContent = returnPct.toFixed(1) + '%';
+
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = totalData;
+        chart.data.datasets[1].data = investedData;
+        chart.update();
+    };
+
+    window.resetInputs = function() {
+        document.getElementById('pv').value=1000; document.getElementById('rate').value=8;
+        document.getElementById('years').value=10; document.getElementById('compound').value='12';
+        document.getElementById('contrib').value=0;
+        document.getElementById('pv-val').textContent='1000'; document.getElementById('rate-val').textContent='8';
+        document.getElementById('years-val').textContent='10'; document.getElementById('contrib-val').textContent='0';
+        calculate();
+    };
+
+    calculate();
+})();
+</script>
+{% endblock %}

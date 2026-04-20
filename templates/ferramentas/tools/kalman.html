@@ -1,0 +1,209 @@
+{% extends "ferramentas/tool_base.html" %}
+
+{% block tool_content %}
+<div class="tool-layout">
+    <div class="tool-panel">
+        <h3 class="tool-panel__title">{{ t('tools_inputs') }}</h3>
+        <div class="tool-field">
+            <label class="tool-field__label">Estado Inicial (x₀) <span class="tool-field__value" id="x0-val">0</span></label>
+            <input type="range" id="x0" min="-10" max="10" step="0.5" value="0">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Transição (F) <span class="tool-field__value" id="F-val">1.0</span></label>
+            <input type="range" id="F" min="0.5" max="1.5" step="0.01" value="1.0">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Ruído do Processo (Q) <span class="tool-field__value" id="Q-val">0.1</span></label>
+            <input type="range" id="Q" min="0.01" max="2" step="0.01" value="0.1">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Ruído de Medição (R) <span class="tool-field__value" id="R-val">1.0</span></label>
+            <input type="range" id="R" min="0.1" max="5" step="0.1" value="1.0">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Nº Observações <span class="tool-field__value" id="nobs-val">100</span></label>
+            <input type="range" id="nobs" min="20" max="500" step="10" value="100">
+        </div>
+        <div class="tool-field">
+            <label class="tool-field__label">Tendência do Sinal <span class="tool-field__value" id="trend-val">0.1</span></label>
+            <input type="range" id="trend" min="0" max="0.5" step="0.01" value="0.1">
+        </div>
+        <div class="tool-actions">
+            <button class="btn btn-gold" onclick="simulate()">Simular</button>
+            <button class="btn btn-ghost" onclick="resetInputs()">{{ t('tools_reset') }}</button>
+        </div>
+    </div>
+
+    <div class="tool-output">
+        <div class="tool-results-grid">
+            <div class="tool-result">
+                <div class="tool-result__label">MSE (Observado)</div>
+                <div class="tool-result__value" id="res-mse-obs">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">MSE (Kalman)</div>
+                <div class="tool-result__value" id="res-mse-kal">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Redução de Erro</div>
+                <div class="tool-result__value" id="res-reduction">—</div>
+            </div>
+            <div class="tool-result">
+                <div class="tool-result__label">Ganho Final (K)</div>
+                <div class="tool-result__value" id="res-gain">—</div>
+            </div>
+        </div>
+
+        <div class="tool-chart-card">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div class="tool-chart-card">
+            <canvas id="gain-chart"></canvas>
+        </div>
+
+        <div class="tool-formula-section">
+            <h3 class="tool-formula-section__title">{{ t('tools_formula') }}</h3>
+            <div class="formula-block">
+                Predição: x̂<sub>t|t−1</sub> = F × x̂<sub>t−1</sub> , &nbsp; P<sub>t|t−1</sub> = F²P<sub>t−1</sub> + Q<br>
+                Ganho: K<sub>t</sub> = P<sub>t|t−1</sub> / (P<sub>t|t−1</sub> + R)<br>
+                Atualização: x̂<sub>t</sub> = x̂<sub>t|t−1</sub> + K<sub>t</sub>(z<sub>t</sub> − x̂<sub>t|t−1</sub>)
+            </div>
+            <div class="tool-explanation">
+                <p>O <strong>Filtro de Kalman</strong> estima recursivamente o estado de um sistema dinâmico
+                a partir de medições ruidosas. É amplamente usado em finanças para filtragem de preços,
+                estimação de parâmetros latentes e trading algorítmico.</p>
+                <ul>
+                    <li><strong>x̂</strong> — estimativa do estado verdadeiro (por exemplo, o preço "limpo" de um ativo sem ruído).</li>
+                    <li><strong>F</strong> — fator de transição: como o estado evolui de um período para o outro. Exemplo: F = 1 significa que o preço tende a continuar no mesmo nível.</li>
+                    <li><strong>Q</strong> — variância do ruído do processo: incerteza na evolução natural do sistema. Quanto maior o Q, mais o modelo aceita que o estado mude inesperadamente.</li>
+                    <li><strong>R</strong> — variância do ruído de medição: incerteza nas observações. Quanto maior o R, mais "suja" é a medição (ex: preços de mercado com muito spread).</li>
+                    <li><strong>P</strong> — erro de estimativa: quão confiante estamos na estimativa x̂. Valores pequenos indicam mais confiança.</li>
+                    <li><strong>Kₜ</strong> — ganho de Kalman: um número entre 0 e 1 que decide o quanto corrigimos a predição com a nova observação. Se K é próximo de 1, confiamos mais na observação; se próximo de 0, confiamos mais na predição.</li>
+                    <li><strong>zₜ</strong> — a observação real (com ruído) no tempo t.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    function randn(){
+        let u=0,v=0;
+        while(u===0) u=Math.random();
+        while(v===0) v=Math.random();
+        return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+    }
+
+    const gold='#C9A84C', navy='#1B3A5C', red='rgba(224,80,112,0.6)';
+    const textColor=getComputedStyle(document.documentElement).getPropertyValue('--color-text-faint').trim()||'#888';
+    const gridColor=(getComputedStyle(document.documentElement).getPropertyValue('--color-divider').trim()||'#D0D0D0')+'33';
+
+    let mainChart = new Chart(document.getElementById('chart').getContext('2d'),{
+        type:'line',data:{labels:[],datasets:[
+            {label:'Sinal Real',data:[],borderColor:navy,borderWidth:2,pointRadius:0,fill:false,tension:0.3,borderDash:[5,5]},
+            {label:'Observações (ruidosas)',data:[],borderColor:red,borderWidth:0,pointRadius:2,pointBackgroundColor:red,fill:false,showLine:false},
+            {label:'Estimativa Kalman',data:[],borderColor:gold,borderWidth:2.5,pointRadius:0,fill:false,tension:0.3}
+        ]},
+        options:{responsive:true,maintainAspectRatio:true,animation:{duration:200},
+        plugins:{legend:{labels:{color:textColor,font:{family:'Inter',size:11}}}},
+        scales:{
+            x:{title:{display:true,text:'Tempo',color:textColor},ticks:{color:textColor,font:{size:10},maxTicksLimit:10},grid:{color:gridColor}},
+            y:{title:{display:true,text:'Valor',color:textColor},ticks:{color:textColor,font:{family:'JetBrains Mono',size:10}},grid:{color:gridColor}}
+        }}
+    });
+
+    let gainChart = new Chart(document.getElementById('gain-chart').getContext('2d'),{
+        type:'line',data:{labels:[],datasets:[
+            {label:'Ganho de Kalman (Kₜ)',data:[],borderColor:gold,borderWidth:2,pointRadius:0,fill:true,backgroundColor:'rgba(201,168,76,0.1)',tension:0.3}
+        ]},
+        options:{responsive:true,maintainAspectRatio:true,animation:{duration:200},
+        plugins:{legend:{labels:{color:textColor,font:{size:11}}}},
+        scales:{
+            x:{title:{display:true,text:'Iteração',color:textColor},ticks:{color:textColor,font:{size:10},maxTicksLimit:10},grid:{color:gridColor}},
+            y:{title:{display:true,text:'K',color:textColor},ticks:{color:textColor,font:{family:'JetBrains Mono',size:10}},grid:{color:gridColor},beginAtZero:true,max:1}
+        }}
+    });
+
+    ['x0','F','Q','R','nobs','trend'].forEach(id=>{
+        document.getElementById(id).addEventListener('input',function(){
+            document.getElementById(id+'-val').textContent=this.value;
+        });
+    });
+
+    window.simulate = function() {
+        const x0=parseFloat(document.getElementById('x0').value);
+        const F=parseFloat(document.getElementById('F').value);
+        const Q=parseFloat(document.getElementById('Q').value);
+        const R=parseFloat(document.getElementById('R').value);
+        const N=parseInt(document.getElementById('nobs').value);
+        const trend=parseFloat(document.getElementById('trend').value);
+
+        // Generate true signal and noisy observations
+        const trueState=[], observations=[];
+        let state=x0;
+        for(let i=0;i<N;i++){
+            state=F*state+trend+Math.sqrt(Q)*randn();
+            trueState.push(state);
+            observations.push(state+Math.sqrt(R)*randn());
+        }
+
+        // Kalman Filter
+        let xhat=x0, P=1.0;
+        const estimates=[], gains=[];
+        let mseObs=0, mseKal=0;
+
+        for(let i=0;i<N;i++){
+            // Predict
+            const xpred=F*xhat;
+            const Ppred=F*F*P+Q;
+
+            // Gain
+            const K=Ppred/(Ppred+R);
+            gains.push(K);
+
+            // Update
+            xhat=xpred+K*(observations[i]-xpred);
+            P=(1-K)*Ppred;
+            estimates.push(xhat);
+
+            mseObs+=(observations[i]-trueState[i])**2;
+            mseKal+=(xhat-trueState[i])**2;
+        }
+
+        mseObs/=N; mseKal/=N;
+        const reduction=((mseObs-mseKal)/mseObs*100);
+
+        document.getElementById('res-mse-obs').textContent=mseObs.toFixed(4);
+        document.getElementById('res-mse-kal').textContent=mseKal.toFixed(4);
+        document.getElementById('res-reduction').textContent=reduction.toFixed(1)+'%';
+        document.getElementById('res-gain').textContent=gains[gains.length-1].toFixed(4);
+
+        const labels=Array.from({length:N},(_,i)=>i);
+
+        mainChart.data.labels=labels;
+        mainChart.data.datasets[0].data=trueState;
+        mainChart.data.datasets[1].data=observations;
+        mainChart.data.datasets[2].data=estimates;
+        mainChart.update();
+
+        gainChart.data.labels=labels;
+        gainChart.data.datasets[0].data=gains;
+        gainChart.update();
+    };
+
+    window.resetInputs = function(){
+        document.getElementById('x0').value=0;document.getElementById('F').value=1.0;
+        document.getElementById('Q').value=0.1;document.getElementById('R').value=1.0;
+        document.getElementById('nobs').value=100;document.getElementById('trend').value=0.1;
+        ['x0','F','Q','R','nobs','trend'].forEach(id=>document.getElementById(id+'-val').textContent=document.getElementById(id).value);
+        simulate();
+    };
+
+    simulate();
+})();
+</script>
+{% endblock %}
